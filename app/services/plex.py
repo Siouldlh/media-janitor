@@ -5,9 +5,12 @@ from datetime import datetime
 from plexapi.server import PlexServer
 from plexapi.library import MovieSection, ShowSection
 from plexapi.video import Movie, Show, Episode
+import logging
 
 from app.config import get_config
 from app.core.models import MediaItem
+
+logger = logging.getLogger(__name__)
 
 
 class PlexService:
@@ -39,6 +42,18 @@ class PlexService:
             server = self._get_server()
             movies_section = server.library.section(self.libraries.get("movies", "Films"))
             items = []
+            
+            # Vérifier si Tautulli est disponible pour enrichir les données de visionnage
+            tautulli_service = None
+            try:
+                from app.services.tautulli import TautulliService
+                config = get_config()
+                if config.tautulli:
+                    tautulli_service = TautulliService()
+                    logger.info("Tautulli service available, will enrich watch history")
+            except Exception:
+                # Tautulli non configuré ou erreur, on continue sans
+                pass
 
             for movie in movies_section.all():
                 media_item = MediaItem(
@@ -66,6 +81,13 @@ class PlexService:
                             except IndexError:
                                 pass
 
+                # Enrichir avec Tautulli si disponible (données de visionnage plus fiables)
+                if tautulli_service:
+                    try:
+                        tautulli_service.enrich_media_item_with_watch_history(media_item)
+                    except Exception as e:
+                        logger.debug(f"Failed to enrich {movie.title} with Tautulli: {e}")
+
                 items.append(media_item)
 
             return items
@@ -78,6 +100,18 @@ class PlexService:
             server = self._get_server()
             series_section = server.library.section(self.libraries.get("series", "Series"))
             items = []
+            
+            # Vérifier si Tautulli est disponible pour enrichir les données de visionnage
+            tautulli_service = None
+            try:
+                from app.services.tautulli import TautulliService
+                config = get_config()
+                if config.tautulli:
+                    tautulli_service = TautulliService()
+                    logger.info("Tautulli service available, will enrich watch history")
+            except Exception:
+                # Tautulli non configuré ou erreur, on continue sans
+                pass
 
             for show in series_section.all():
                 # Get last viewed episode date
@@ -119,6 +153,13 @@ class PlexService:
                                 media_item.imdb_id = guid.id.split("//")[-1]
                             except IndexError:
                                 pass
+
+                # Enrichir avec Tautulli si disponible (données de visionnage plus fiables)
+                if tautulli_service:
+                    try:
+                        tautulli_service.enrich_media_item_with_watch_history(media_item)
+                    except Exception as e:
+                        logger.debug(f"Failed to enrich {show.title} with Tautulli: {e}")
 
                 items.append(media_item)
 

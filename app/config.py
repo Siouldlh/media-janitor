@@ -44,6 +44,11 @@ class QBittorrentConfig(BaseModel):
     match_mode: str = "path"  # path|files
 
 
+class TautulliConfig(BaseModel):
+    url: str
+    api_key: str
+
+
 class RulesConfig(BaseModel):
     movies: dict = Field(default_factory=lambda: {
         "delete_if_not_watched_days": 60,
@@ -74,6 +79,7 @@ class AppConfig(BaseModel):
 
 class Config(BaseSettings):
     plex: Optional[PlexConfig] = None
+    tautulli: Optional[TautulliConfig] = None
     radarr: Optional[RadarrConfig] = None
     sonarr: Optional[SonarrConfig] = None
     overseerr: Optional[OverseerrConfig] = None
@@ -102,7 +108,7 @@ class Config(BaseSettings):
 
         # Override with environment variables
         env_overrides = {}
-        for key in ["plex", "radarr", "sonarr", "overseerr", "qbittorrent"]:
+        for key in ["plex", "tautulli", "radarr", "sonarr", "overseerr", "qbittorrent"]:
             if key in yaml_data:
                 for subkey, value in yaml_data[key].items():
                     env_key = f"{key.upper()}__{subkey.upper()}"

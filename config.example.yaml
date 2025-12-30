@@ -8,6 +8,14 @@ plex:
     movies: "Films"
     series: "Series"
 
+tautulli:
+  # URL complète de Tautulli (optionnel mais recommandé pour un historique de visionnage fiable)
+  # Tautulli track toutes les sessions de visionnage, même si non marquées comme "vues" dans Plex
+  # Exemple NAS: http://192.168.1.59:8181
+  # Exemple Docker network: http://tautulli:8181
+  url: "http://192.168.1.59:8181"
+  api_key: "TAUTULLI_API_KEY"  # Trouvable dans Tautulli > Settings > Web Interface > API key
+
 radarr:
   # URL complète de Radarr (LAN ou Docker network)
   # Exemple NAS: http://192.168.1.59:7878
