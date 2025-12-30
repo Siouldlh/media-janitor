@@ -61,7 +61,13 @@ class TautulliService:
                 )
                 response.raise_for_status()
                 data = response.json()
-                return data.get("response", {}).get("data", {}).get("data", [])
+                # Tautulli API structure: response.data.data is the array
+                result = data.get("response", {}).get("data", {})
+                if isinstance(result, dict):
+                    return result.get("data", [])
+                elif isinstance(result, list):
+                    return result
+                return []
             except httpx.HTTPError as e:
                 raise Exception(f"Error fetching history from Tautulli: {str(e)}")
 
