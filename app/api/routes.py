@@ -266,16 +266,86 @@ async def diagnostics():
 
 @router.get("/api/config")
 async def get_config_endpoint():
-    """Récupère la configuration actuelle (sans secrets)."""
+    """Récupère la configuration actuelle (sans secrets sensibles)."""
     config = get_config()
     return {
-        "plex": {"url": config.plex.url if config.plex else None},
-        "radarr": {"url": config.radarr.url if config.radarr else None},
-        "sonarr": {"url": config.sonarr.url if config.sonarr else None},
-        "overseerr": {"url": config.overseerr.url if config.overseerr else None},
-        "qbittorrent": {"url": config.qbittorrent.url if config.qbittorrent else None},
+        "plex": {
+            "url": config.plex.url if config.plex else None,
+            "libraries": config.plex.libraries if config.plex else {}
+        },
+        "radarr": {
+            "url": config.radarr.url if config.radarr else None,
+            "protected_tags": config.radarr.protected_tags if config.radarr else []
+        },
+        "sonarr": {
+            "url": config.sonarr.url if config.sonarr else None,
+            "protected_tags": config.sonarr.protected_tags if config.sonarr else []
+        },
+        "overseerr": {
+            "url": config.overseerr.url if config.overseerr else None,
+            "protect_if_request_active": config.overseerr.protect_if_request_active if config.overseerr else True,
+            "protect_if_request_younger_than_days": config.overseerr.protect_if_request_younger_than_days if config.overseerr else 30
+        },
+        "qbittorrent": {
+            "url": config.qbittorrent.url if config.qbittorrent else None,
+            "protect_categories": config.qbittorrent.protect_categories if config.qbittorrent else []
+        },
         "rules": config.rules.dict() if config.rules else {},
         "scheduler": config.scheduler.dict() if config.scheduler else {},
         "app": config.app.dict() if config.app else {},
     }
+
+
+@router.put("/api/config")
+async def update_config_endpoint(config_data: dict):
+    """Met à jour la configuration (règles uniquement, pas les URLs/secrets)."""
+    import yaml
+    from pathlib import Path
+    import os
+    
+    try:
+        # Trouver le fichier config.yaml
+        config_path = os.getenv("CONFIG_PATH", "/config/config.yaml")
+        possible_paths = [
+            config_path,
+            "/config/config.yaml",
+            "./config/config.yaml",
+        ]
+        
+        config_file = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                config_file = path
+                break
+        
+        if not config_file:
+            raise HTTPException(status_code=404, detail="Config file not found")
+        
+        # Lire la config actuelle
+        with open(config_file, "r", encoding="utf-8") as f:
+            current_config = yaml.safe_load(f) or {}
+        
+        # Mettre à jour uniquement les sections autorisées (règles, scheduler, app)
+        # On ne permet pas de modifier les URLs/secrets depuis l'UI pour des raisons de sécurité
+        if "rules" in config_data:
+            current_config["rules"] = config_data["rules"]
+        if "scheduler" in config_data:
+            current_config["scheduler"] = config_data["scheduler"]
+        if "app" in config_data:
+            current_config["app"] = config_data["app"]
+        
+        # Sauvegarder
+        with open(config_file, "w", encoding="utf-8") as f:
+            yaml.dump(current_config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        
+        # Recharger la config
+        from app.config import init_config
+        init_config(config_file)
+        
+        logger.info(f"Configuration updated from UI: {config_file}")
+        
+        return {"success": True, "message": "Configuration updated successfully"}
+    except Exception as e:
+        logger.exception("Failed to update config")
+        raise HTTPException(status_code=500, detail=f"Failed to update config: {str(e)}")
 

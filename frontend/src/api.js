@@ -65,3 +65,22 @@ export async function getDiagnostics() {
   return response.json();
 }
 
+export async function getConfig() {
+  const response = await fetch(`${API_BASE}/config`);
+  if (!response.ok) throw new Error('Failed to fetch config');
+  return response.json();
+}
+
+export async function updateConfig(configData) {
+  const response = await fetch(`${API_BASE}/config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(configData),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to update config');
+  }
+  return response.json();
+}
+
