@@ -16,6 +16,7 @@ from app.services.overseerr import OverseerrService
 from app.services.qbittorrent import QBittorrentService
 from app.db.models import Plan, PlanItem
 from app.db.database import get_db_sync
+from app.config import get_config
 
 
 class Planner:
