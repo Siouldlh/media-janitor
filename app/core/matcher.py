@@ -208,18 +208,22 @@ class MediaMatcher:
 
         # Enrich with qBittorrent
         if qb_service:
-            logger.info(f"Enriching {len(unified)} items with qBittorrent data...")
+            logger.info(f"Enriching {len(unified)} items with qBittorrent data ({len(qb_torrents)} torrents available)...")
             qb_matched_count = 0
+            items_with_path = 0
             for idx, item in enumerate(unified):
                 if idx > 0 and idx % 200 == 0:
-                    logger.info(f"  Progress: {idx}/{len(unified)} items processed, {qb_matched_count} with torrents")
+                    logger.info(f"  Progress: {idx}/{len(unified)} items processed, {qb_matched_count} with torrents, {items_with_path} with paths")
                 primary_path = item.get_primary_path()
                 if primary_path:
+                    items_with_path += 1
                     qb_hashes = qb_service.find_torrents_for_path(primary_path, qb_torrents)
                     if qb_hashes:
                         qb_matched_count += 1
+                        if idx < 5:  # Log first 5 matches for debugging
+                            logger.debug(f"  Matched {len(qb_hashes)} torrent(s) for {item.title} (path: {primary_path})")
                     item.qb_hashes.extend(qb_hashes)
-            logger.info(f"qBittorrent enrichment completed: {qb_matched_count} items have torrents")
+            logger.info(f"qBittorrent enrichment completed: {qb_matched_count}/{items_with_path} items with paths have torrents")
 
         return unified
 
