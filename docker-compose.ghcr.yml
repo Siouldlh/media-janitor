@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   media-janitor:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
+    image: ghcr.io/siouldlh/media-janitor:latest
     container_name: media-janitor
     ports:
       - "8099:8099"

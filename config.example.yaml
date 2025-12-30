@@ -1,30 +1,45 @@
 plex:
-  url: "http://plex:32400"
+  # URL complète du serveur Plex (LAN ou Docker network)
+  # Exemple NAS: http://192.168.1.59:32400
+  # Exemple Docker network: http://plex:32400
+  url: "http://192.168.1.59:32400"
   token: "PLEX_TOKEN"
   libraries:
     movies: "Films"
     series: "Series"
 
 radarr:
-  url: "http://radarr:7878"
+  # URL complète de Radarr (LAN ou Docker network)
+  # Exemple NAS: http://192.168.1.59:7878
+  # Exemple Docker network: http://radarr:7878
+  url: "http://192.168.1.59:7878"
   api_key: "RADARR_KEY"
   delete_method: "api"  # api|filesystem
   protected_tags: ["protected", "kids"]
 
 sonarr:
-  url: "http://sonarr:8989"
+  # URL complète de Sonarr (LAN ou Docker network)
+  # Exemple NAS: http://192.168.1.59:8989
+  # Exemple Docker network: http://sonarr:8989
+  url: "http://192.168.1.59:8989"
   api_key: "SONARR_KEY"
   protected_tags: ["protected"]
 
 overseerr:
-  url: "http://overseerr:5055"
+  # URL complète d'Overseerr (LAN ou Docker network)
+  # Exemple NAS: http://192.168.1.59:5055
+  # Exemple Docker network: http://overseerr:5055
+  url: "http://192.168.1.59:5055"
   api_key: "OVERSEERR_KEY"
   protect_if_request_active: true
   protect_if_request_younger_than_days: 30
   requested_by_must_have_watched: false
 
 qbittorrent:
-  url: "http://qbittorrent:8181"
+  # URL complète de qBittorrent (LAN ou Docker network)
+  # Exemple NAS via Gluetun: http://192.168.1.59:8181
+  # Exemple Docker network: http://qbittorrent:8080
+  url: "http://192.168.1.59:8181"
   username: "admin"
   password: "xxxx"
   protect_categories: ["permaseed", "cross-seed-link"]

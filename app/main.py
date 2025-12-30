@@ -16,7 +16,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize config
+# Support both /config/config.yaml (Docker) and ./config/config.yaml (local dev)
 config_path = os.getenv("CONFIG_PATH", "/config/config.yaml")
+if not os.path.exists(config_path) and os.path.exists("./config/config.yaml"):
+    config_path = "./config/config.yaml"
 init_config(config_path)
 
 # Initialize database

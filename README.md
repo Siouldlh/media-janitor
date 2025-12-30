@@ -34,15 +34,17 @@ cp config.example.yaml config/config.yaml
 3. Éditez `config/config.yaml` avec vos paramètres :
 ```yaml
 plex:
-  url: "http://plex:32400"
+  url: "http://192.168.1.59:32400"  # URL LAN de votre NAS
   token: "VOTRE_TOKEN_PLEX"
 
 radarr:
-  url: "http://radarr:7878"
+  url: "http://192.168.1.59:7878"  # URL LAN de votre NAS
   api_key: "VOTRE_CLE_RADARR"
 
 # ... etc
 ```
+
+**Note importante** : L'application accède aux services via leurs URLs LAN (ou Docker network si vous êtes sur le même réseau). Vous n'avez pas besoin de créer un réseau Docker custom. Configurez simplement les URLs complètes dans `config.yaml`.
 
 4. Créez le dossier de données :
 ```bash
@@ -50,11 +52,18 @@ mkdir -p data
 ```
 
 5. Lancez avec docker-compose :
+
+**Option A : Build local**
 ```bash
 docker-compose up -d
 ```
 
-L'application sera accessible sur http://localhost:8099
+**Option B : Utiliser l'image depuis GHCR (recommandé)**
+```bash
+docker-compose -f docker-compose.ghcr.yml up -d
+```
+
+L'application sera accessible sur http://localhost:8099 (ou http://VOTRE_NAS_IP:8099)
 
 ## Configuration
 
@@ -82,7 +91,7 @@ Voir `config.example.yaml` pour un exemple complet.
 
 Vous pouvez surcharger la config YAML avec des variables d'environnement :
 - Format : `SERVICE__KEY=value`
-- Exemple : `PLEX__URL=http://plex:32400`
+- Exemple : `PLEX__URL=http://192.168.1.59:32400`
 
 ## Utilisation
 
@@ -199,6 +208,67 @@ media_janitor/
 - **Logs détaillés** : Audit trail complet dans la DB
 - **Rollback logique** : Pas de suppression si qBittorrent échoue
 - **Cross-seed** : Détection et suppression de tous les torrents liés avant suppression fichiers
+
+## Déploiement sur NAS (ZimaOS / Synology / etc.)
+
+### Configuration pour accès LAN
+
+L'application est conçue pour accéder aux services via leurs URLs LAN exposées, sans nécessiter de réseau Docker custom.
+
+**Exemple de configuration pour NAS ZimaOS :**
+
+```yaml
+plex:
+  url: "http://192.168.1.59:32400"  # IP du NAS + port Plex
+  token: "VOTRE_TOKEN_PLEX"
+
+radarr:
+  url: "http://192.168.1.59:7878"
+  api_key: "VOTRE_CLE_RADARR"
+
+sonarr:
+  url: "http://192.168.1.59:8989"
+  api_key: "VOTRE_CLE_SONARR"
+
+overseerr:
+  url: "http://192.168.1.59:5055"
+  api_key: "VOTRE_CLE_OVERSEERR"
+
+qbittorrent:
+  url: "http://192.168.1.59:8181"  # Port exposé via Gluetun
+  username: "admin"
+  password: "VOTRE_MOT_DE_PASSE"
+```
+
+**Docker Compose minimal (depuis GHCR) :**
+
+```yaml
+version: '3.8'
+
+services:
+  media-janitor:
+    image: ghcr.io/siouldlh/media-janitor:latest
+    container_name: media-janitor
+    ports:
+      - "8099:8099"
+    volumes:
+      - ./config:/config:ro
+      - ./data:/data
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - DATA_DIR=/data
+      - TZ=Europe/Paris
+    restart: unless-stopped
+```
+
+Utilisez `docker-compose -f docker-compose.ghcr.yml up -d` pour lancer.
+
+### Mise à jour de l'image
+
+```bash
+docker-compose -f docker-compose.ghcr.yml pull
+docker-compose -f docker-compose.ghcr.yml up -d
+```
 
 ## Limitations
 
