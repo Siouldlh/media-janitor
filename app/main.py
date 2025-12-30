@@ -11,8 +11,12 @@ from app.db.database import init_db
 from app.api.routes import router
 from app.scheduler import start_scheduler
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+# Setup logging (will be configured from config after init)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 logger = logging.getLogger(__name__)
 
 # Initialize config
@@ -74,6 +78,24 @@ app = FastAPI(title="Media Janitor", version="1.0.0")
 
 # Include API routes
 app.include_router(router)
+
+# Global exception handler for unhandled exceptions
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle all unhandled exceptions with detailed logging."""
+    import traceback
+    logger.exception(f"Unhandled exception in {request.method} {request.url}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": str(exc),
+            "type": exc.__class__.__name__,
+            "message": f"Internal server error: {str(exc)}",
+            "path": str(request.url),
+            "method": request.method,
+            "traceback": traceback.format_exc()
+        }
+    )
 
 # Start scheduler
 start_scheduler()

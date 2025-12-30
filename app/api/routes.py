@@ -1,8 +1,10 @@
 """API routes."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List
+import logging
+import traceback
 
 from app.db.database import get_db
 from app.db.models import Plan, PlanItem, Run, RunItem, Protection
@@ -20,15 +22,18 @@ from app.services.overseerr import OverseerrService
 from app.services.qbittorrent import QBittorrentService
 from app.config import get_config
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 @router.post("/api/scan", response_model=ScanResponse)
 async def scan():
     """Lance un scan et génère un plan."""
+    logger.info("=== Starting scan ===")
     try:
         planner = Planner()
         plan_id = await planner.generate_plan()
+        logger.info(f"Scan completed successfully, plan_id: {plan_id}")
 
         db = next(get_db())
         plan = db.query(Plan).filter(Plan.id == plan_id).first()
@@ -36,7 +41,22 @@ async def scan():
 
         return ScanResponse(plan_id=plan_id, stats=stats)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Log la stacktrace complète
+        logger.exception("Scan failed with exception")
+        
+        # Préparer la réponse d'erreur détaillée
+        error_detail = {
+            "error": str(e),
+            "type": e.__class__.__name__,
+            "message": f"Scan failed: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
+        
+        # Retourner une réponse JSON avec la stacktrace
+        return JSONResponse(
+            status_code=500,
+            content=error_detail
+        )
 
 
 @router.get("/api/plan/{plan_id}", response_model=PlanResponse)
