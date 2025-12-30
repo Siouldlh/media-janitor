@@ -2,8 +2,11 @@
 from typing import List, Dict, Optional
 from pathlib import Path
 import difflib
+import logging
 
 from app.core.models import MediaItem
+
+logger = logging.getLogger(__name__)
 
 
 class MediaMatcher:
@@ -74,30 +77,29 @@ class MediaMatcher:
 
     @staticmethod
     def match_by_path(media_item: MediaItem, candidates: List[MediaItem]) -> Optional[MediaItem]:
-        """Match par chemin de fichier."""
+        """Match par chemin de fichier (sans resolve pour éviter les appels réseau lents)."""
         primary_path = media_item.get_primary_path()
         if not primary_path:
             return None
 
-        try:
-            media_path_obj = Path(primary_path).resolve()
-        except (OSError, ValueError):
-            return None
+        # Normaliser les chemins sans resolve (évite les appels réseau)
+        media_path_normalized = str(Path(primary_path)).rstrip("/")
 
         for candidate in candidates:
             candidate_path = candidate.get_primary_path()
             if not candidate_path:
                 continue
 
-            try:
-                candidate_path_obj = Path(candidate_path).resolve()
-                # Check if paths match or one is parent of the other
-                if media_path_obj == candidate_path_obj:
-                    return candidate
-                if media_path_obj in candidate_path_obj.parents or candidate_path_obj in media_path_obj.parents:
-                    return candidate
-            except (OSError, ValueError):
-                continue
+            candidate_path_normalized = str(Path(candidate_path)).rstrip("/")
+            
+            # Check if paths match exactly
+            if media_path_normalized == candidate_path_normalized:
+                return candidate
+            
+            # Check if one is a substring of the other (parent/child relationship)
+            if media_path_normalized.startswith(candidate_path_normalized + "/") or \
+               candidate_path_normalized.startswith(media_path_normalized + "/"):
+                return candidate
 
         return None
 
@@ -158,6 +160,7 @@ class MediaMatcher:
         processed_sonarr = set()
 
         # Start with Radarr/Sonarr items (source of truth for paths)
+        logger.info(f"Starting unification: {len(radarr_items)} Radarr, {len(sonarr_items)} Sonarr, {len(plex_items)} Plex items")
         for item in radarr_items + sonarr_items:
             unified.append(item)
             if item.type == "movie":
@@ -166,40 +169,57 @@ class MediaMatcher:
                 processed_sonarr.add(id(item))
 
         # Match Plex items
-        for plex_item in plex_items:
+        logger.info(f"Matching {len(plex_items)} Plex items...")
+        matched_count = 0
+        for idx, plex_item in enumerate(plex_items):
+            if idx > 0 and idx % 100 == 0:
+                logger.info(f"  Progress: {idx}/{len(plex_items)} Plex items processed, {matched_count} matched")
+            
             matched = False
 
-            # Try ID match first
+            # Try ID match first (fastest)
             match = MediaMatcher.match_by_id(plex_item, unified)
             if match:
                 MediaMatcher.merge_items(plex_item, match)
                 matched = True
+                matched_count += 1
             else:
                 # Try title+year match
                 match = MediaMatcher.match_by_title_year(plex_item, unified)
                 if match:
                     MediaMatcher.merge_items(plex_item, match)
                     matched = True
+                    matched_count += 1
                 else:
                     # Try path match
                     match = MediaMatcher.match_by_path(plex_item, unified)
                     if match:
                         MediaMatcher.merge_items(plex_item, match)
                         matched = True
+                        matched_count += 1
 
             if not matched:
                 # Add as new item (Plex-only)
                 unified.append(plex_item)
+        
+        logger.info(f"Plex matching completed: {matched_count}/{len(plex_items)} matched, {len(unified)} total unified items")
 
         # Note: Overseerr enrichment is done separately in planner
 
         # Enrich with qBittorrent
         if qb_service:
-            for item in unified:
+            logger.info(f"Enriching {len(unified)} items with qBittorrent data...")
+            qb_matched_count = 0
+            for idx, item in enumerate(unified):
+                if idx > 0 and idx % 200 == 0:
+                    logger.info(f"  Progress: {idx}/{len(unified)} items processed, {qb_matched_count} with torrents")
                 primary_path = item.get_primary_path()
                 if primary_path:
                     qb_hashes = qb_service.find_torrents_for_path(primary_path, qb_torrents)
+                    if qb_hashes:
+                        qb_matched_count += 1
                     item.qb_hashes.extend(qb_hashes)
+            logger.info(f"qBittorrent enrichment completed: {qb_matched_count} items have torrents")
 
         return unified
 

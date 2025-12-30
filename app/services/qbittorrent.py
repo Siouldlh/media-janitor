@@ -59,31 +59,35 @@ class QBittorrentService:
             raise Exception(f"Error fetching torrents from qBittorrent: {str(e)}")
 
     def find_torrents_for_path(self, media_path: str, all_torrents: Optional[List[Dict[str, Any]]] = None) -> List[str]:
-        """Trouve tous les torrents (cross-seed) qui pointent vers un chemin média."""
+        """Trouve tous les torrents (cross-seed) qui pointent vers un chemin média.
+        
+        Optimisé pour éviter Path.resolve() qui est très lent sur les chemins réseau.
+        """
         if all_torrents is None:
             all_torrents = self.get_torrents()
 
-        media_path_obj = Path(media_path).resolve()
+        # Normaliser le chemin média sans resolve (évite les appels réseau)
+        media_path_normalized = str(Path(media_path)).rstrip("/")
         matching_hashes = []
 
         for torrent in all_torrents:
-            save_path = Path(torrent["save_path"]).resolve()
-            content_path = Path(torrent["content_path"]).resolve() if torrent.get("content_path") else None
+            save_path_normalized = str(Path(torrent["save_path"])).rstrip("/")
+            content_path_normalized = str(Path(torrent.get("content_path", ""))).rstrip("/") if torrent.get("content_path") else None
 
             # Check if media_path is within save_path or matches content_path
-            try:
-                if self.match_mode == "path":
-                    # Match by directory path
-                    if content_path:
-                        if media_path_obj == content_path or media_path_obj in content_path.parents or content_path in media_path_obj.parents:
-                            matching_hashes.append(torrent["hash"])
-                    else:
-                        # Fallback: check if media_path is in save_path
-                        if media_path_obj == save_path or media_path_obj in save_path.parents or save_path in media_path_obj.parents:
-                            matching_hashes.append(torrent["hash"])
-            except (OSError, ValueError):
-                # Path resolution failed, skip
-                pass
+            if self.match_mode == "path":
+                # Match by directory path (string comparison, much faster)
+                if content_path_normalized:
+                    if media_path_normalized == content_path_normalized or \
+                       media_path_normalized.startswith(content_path_normalized + "/") or \
+                       content_path_normalized.startswith(media_path_normalized + "/"):
+                        matching_hashes.append(torrent["hash"])
+                else:
+                    # Fallback: check if media_path is in save_path
+                    if media_path_normalized == save_path_normalized or \
+                       media_path_normalized.startswith(save_path_normalized + "/") or \
+                       save_path_normalized.startswith(media_path_normalized + "/"):
+                        matching_hashes.append(torrent["hash"])
 
         return matching_hashes
 
