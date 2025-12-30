@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  media-janitor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: media-janitor
+    ports:
+      - "8099:8099"
+    volumes:
+      # Config et données
+      - ./config:/config:ro
+      - ./data:/data
+      # Montage des médias (ajustez selon votre structure)
+      # Exemple pour un NAS typique :
+      # - /media/raid/DATA:/raid/DATA:ro
+      # - /DATA/AppData/media-janitor:/app/config:ro
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - DATA_DIR=/data
+    restart: unless-stopped
+    networks:
+      - media-network
+
+networks:
+  media-network:
+    driver: bridge
+

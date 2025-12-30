@@ -1,0 +1,43 @@
+.item-details {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.details-grid > div {
+  padding: 8px;
+  background: white;
+  border-radius: 4px;
+}
+
+.protected-row {
+  background-color: #f8f9fa;
+  opacity: 0.7;
+}
+
+.protected-row td {
+  color: #6c757d;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.protected-badge {
+  padding: 4px 8px;
+  background-color: #28a745;
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+

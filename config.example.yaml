@@ -1,0 +1,60 @@
+plex:
+  url: "http://plex:32400"
+  token: "PLEX_TOKEN"
+  libraries:
+    movies: "Films"
+    series: "Series"
+
+radarr:
+  url: "http://radarr:7878"
+  api_key: "RADARR_KEY"
+  delete_method: "api"  # api|filesystem
+  protected_tags: ["protected", "kids"]
+
+sonarr:
+  url: "http://sonarr:8989"
+  api_key: "SONARR_KEY"
+  protected_tags: ["protected"]
+
+overseerr:
+  url: "http://overseerr:5055"
+  api_key: "OVERSEERR_KEY"
+  protect_if_request_active: true
+  protect_if_request_younger_than_days: 30
+  requested_by_must_have_watched: false
+
+qbittorrent:
+  url: "http://qbittorrent:8181"
+  username: "admin"
+  password: "xxxx"
+  protect_categories: ["permaseed", "cross-seed-link"]
+  remove_torrent_first: true
+  delete_data_with_qb: false
+  match_mode: "path"  # path|files
+
+rules:
+  movies:
+    delete_if_not_watched_days: 60
+    if_never_watched_use_added_days: 60
+  series:
+    delete_episodes_not_watched_days: 60
+    keep_last_n_episodes: 0
+    delete_entire_series_if_inactive_days: 120
+
+scheduler:
+  enabled: true
+  cadence: "1 day"
+  timezone: "Europe/Paris"
+
+app:
+  dry_run_default: true
+  require_manual_approval: true
+  require_confirm_phrase: "DELETE"  # Phrase à taper pour confirmer (optionnel, mettre null pour désactiver)
+  excluded_paths:
+    - "/media/downloads/incomplete"
+    - "/media/anime_en_cours"
+    # Ajoutez vos chemins à exclure ici
+  max_items_per_scan: null  # Limite le nombre d'items par scan (null = pas de limite)
+  data_dir: "/data"
+  log_level: "INFO"
+

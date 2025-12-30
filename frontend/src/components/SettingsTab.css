@@ -1,0 +1,26 @@
+.diagnostics {
+  margin-top: 20px;
+}
+
+.diagnostic-item {
+  padding: 10px;
+  margin: 5px 0;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.status-ok {
+  color: #28a745;
+}
+
+.status-error {
+  color: #dc3545;
+}
+
+code {
+  background-color: #f8f9fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
