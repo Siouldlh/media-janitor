@@ -7,6 +7,6 @@ pyyaml==6.0.1
 httpx==0.25.2
 python-multipart==0.0.6
 apscheduler==3.10.4
-python-qbittorrent==0.4.2
+qbittorrent-api==2024.3.50
 plexapi==4.15.0
 

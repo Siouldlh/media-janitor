@@ -17,7 +17,9 @@ WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && \
+    python -c "import qbittorrentapi; print(f'qbittorrentapi version: {qbittorrentapi.__version__}')" || \
+    (echo "ERROR: qbittorrentapi not installed correctly" && exit 1)
 
 # Copy application code
 COPY app/ ./app/
