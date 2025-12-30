@@ -3,8 +3,9 @@ FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci
+COPY frontend/package.json ./
+# npm ci requires package-lock.json, npm install works without it
+RUN npm install --frozen-lockfile || npm install
 
 COPY frontend/ .
 RUN npm run build
