@@ -31,8 +31,8 @@ COPY app/ ./app/
 # Copy built frontend
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Create data directory
-RUN mkdir -p /data
+# Create data directory with proper permissions
+RUN mkdir -p /data && chmod 777 /data
 
 # Expose port
 EXPOSE 8099

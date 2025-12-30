@@ -58,7 +58,16 @@ init_config(config_path_found)
 
 # Initialize database
 data_dir = os.getenv("DATA_DIR", "/data")
-init_db(data_dir)
+try:
+    init_db(data_dir)
+except Exception as e:
+    logger.error(f"Failed to initialize database: {str(e)}")
+    logger.error(f"Data directory: {data_dir}")
+    logger.error("Please ensure:")
+    logger.error("1. The data volume is mounted: -v ./data:/data")
+    logger.error("2. The directory has write permissions")
+    logger.error("3. The DATA_DIR environment variable points to a writable path")
+    raise
 
 # Create FastAPI app
 app = FastAPI(title="Media Janitor", version="1.0.0")
