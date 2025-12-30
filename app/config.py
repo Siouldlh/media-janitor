@@ -91,7 +91,11 @@ class Config(BaseSettings):
         """Load configuration from YAML file, override with env vars."""
         config_path = Path(yaml_path)
         if not config_path.exists():
-            raise FileNotFoundError(f"Config file not found: {yaml_path}")
+            raise FileNotFoundError(
+                f"Config file not found: {yaml_path}\n"
+                f"Please create config/config.yaml from config.example.yaml\n"
+                f"Make sure the volume is mounted: -v ./config:/config:ro"
+            )
 
         with open(config_path, "r", encoding="utf-8") as f:
             yaml_data = yaml.safe_load(f) or {}

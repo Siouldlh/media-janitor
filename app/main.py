@@ -18,9 +18,43 @@ logger = logging.getLogger(__name__)
 # Initialize config
 # Support both /config/config.yaml (Docker) and ./config/config.yaml (local dev)
 config_path = os.getenv("CONFIG_PATH", "/config/config.yaml")
-if not os.path.exists(config_path) and os.path.exists("./config/config.yaml"):
-    config_path = "./config/config.yaml"
-init_config(config_path)
+
+# Try multiple paths
+possible_paths = [
+    config_path,
+    "/config/config.yaml",
+    "./config/config.yaml",
+    os.path.join(os.path.dirname(__file__), "..", "config", "config.yaml"),
+]
+
+config_path_found = None
+for path in possible_paths:
+    if os.path.exists(path):
+        config_path_found = path
+        break
+
+if not config_path_found:
+    error_msg = f"""
+ERROR: Configuration file not found!
+
+Tried the following paths:
+{chr(10).join(f'  - {p}' for p in possible_paths)}
+
+Please ensure:
+1. The config directory is mounted in Docker: -v ./config:/config:ro
+2. The file config/config.yaml exists (copy from config.example.yaml)
+3. The CONFIG_PATH environment variable points to the correct file
+
+Example setup:
+  mkdir -p config
+  cp config.example.yaml config/config.yaml
+  # Edit config/config.yaml with your settings
+"""
+    logger.error(error_msg)
+    raise FileNotFoundError(error_msg)
+
+logger.info(f"Loading configuration from: {config_path_found}")
+init_config(config_path_found)
 
 # Initialize database
 data_dir = os.getenv("DATA_DIR", "/data")
