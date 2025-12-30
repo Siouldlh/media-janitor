@@ -87,7 +87,9 @@ class OverseerrService:
     def _apply_request_to_item(self, media_item: MediaItem, request: Dict[str, Any]) -> None:
         """Applique les données d'une request Overseerr à un MediaItem."""
         media_item.overseerr_request_id = request.get("id")
-        media_item.overseerr_status = request.get("status", "").lower()
+        # Convert status to string before calling lower() (status might be int or string)
+        status = request.get("status", "")
+        media_item.overseerr_status = str(status).lower() if status else ""
         media_item.overseerr_requested_by = request.get("requestedBy", {}).get("username") if request.get("requestedBy") else None
 
         # Parse requested date
