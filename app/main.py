@@ -1,12 +1,12 @@
 """FastAPI main application."""
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
 import os
 import logging
 
-from app.config import init_config
+from app.config import init_config, get_config
 from app.db.database import init_db
 from app.api.routes import router
 from app.scheduler import start_scheduler
@@ -58,7 +58,16 @@ Example setup:
     raise FileNotFoundError(error_msg)
 
 logger.info(f"Loading configuration from: {config_path_found}")
-init_config(config_path_found)
+config = init_config(config_path_found)
+
+# Configure logging level from config
+log_level = getattr(config.app, 'log_level', 'INFO').upper()
+try:
+    logging.getLogger().setLevel(getattr(logging, log_level, logging.INFO))
+    logger.info(f"Logging level set to: {log_level}")
+except (ValueError, AttributeError):
+    logger.warning(f"Invalid log level '{log_level}', using INFO")
+    logging.getLogger().setLevel(logging.INFO)
 
 # Initialize database
 data_dir = os.getenv("DATA_DIR", "/data")

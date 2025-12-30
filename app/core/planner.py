@@ -143,7 +143,7 @@ class Planner:
         # Évaluation des règles et garde-fous
         logger.info("Evaluating rules and safety checks...")
         candidates = []
-        max_items = self.config.app.max_items_per_scan if self.config.app else None
+        max_items = config.app.max_items_per_scan if config.app else None
         
         for item in unified_items:
             # Limite max_items_per_scan si configuré
