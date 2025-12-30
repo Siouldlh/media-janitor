@@ -17,9 +17,13 @@ WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
-    python -c "import qbittorrentapi; print(f'qbittorrentapi version: {qbittorrentapi.__version__}')" || \
-    (echo "ERROR: qbittorrentapi not installed correctly" && exit 1)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Verify critical dependencies are installed
+RUN python -c "import qbittorrentapi; print('✓ qbittorrentapi imported successfully')" && \
+    python -c "import plexapi; print('✓ plexapi imported successfully')" && \
+    python -c "import fastapi; print('✓ fastapi imported successfully')" || \
+    (echo "ERROR: Critical dependencies not installed correctly" && exit 1)
 
 # Copy application code
 COPY app/ ./app/
