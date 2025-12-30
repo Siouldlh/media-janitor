@@ -81,16 +81,24 @@ start_scheduler()
 # Serve frontend static files
 frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
-    app.mount("/static", StaticFiles(directory=str(frontend_dist / "assets")), name="static")
-
+    # Serve assets with proper Content-Types (IMPORTANT: before SPA fallback)
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+    
+    # SPA fallback: serve index.html for all non-API routes
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
-        """Serve frontend for all non-API routes."""
+        """Serve frontend SPA (all non-API routes return index.html)."""
+        # Don't interfere with API routes
         if full_path.startswith("api/"):
+            return None
+        # Don't interfere with assets (should be handled by /assets mount above)
+        if full_path.startswith("assets/"):
             return None
         index_file = frontend_dist / "index.html"
         if index_file.exists():
-            return FileResponse(str(index_file))
+            return FileResponse(str(index_file), media_type="text/html")
         return {"message": "Frontend not built"}
 
 
