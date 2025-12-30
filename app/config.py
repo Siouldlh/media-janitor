@@ -52,7 +52,8 @@ class TautulliConfig(BaseModel):
 class RulesConfig(BaseModel):
     movies: dict = Field(default_factory=lambda: {
         "delete_if_not_watched_days": 60,
-        "if_never_watched_use_added_days": 60
+        "if_never_watched_use_added_days": 60,
+        "strategy": "not_watched_days"  # "never_watched_only" ou "not_watched_days"
     })
     series: dict = Field(default_factory=lambda: {
         "delete_episodes_not_watched_days": 60,

@@ -57,8 +57,12 @@ qbittorrent:
 
 rules:
   movies:
-    delete_if_not_watched_days: 60
-    if_never_watched_use_added_days: 60
+    # Stratégie de suppression:
+    # - "never_watched_only": supprime uniquement les films jamais regardés
+    # - "not_watched_days": supprime les films jamais regardés OU non regardés depuis X jours
+    strategy: "not_watched_days"  # ou "never_watched_only"
+    delete_if_not_watched_days: 60  # Jours depuis le dernier visionnage (si strategy = "not_watched_days")
+    if_never_watched_use_added_days: 60  # Jours depuis l'ajout si jamais regardé
   series:
     delete_episodes_not_watched_days: 60
     keep_last_n_episodes: 0

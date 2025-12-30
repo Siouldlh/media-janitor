@@ -66,28 +66,60 @@ class QBittorrentService:
         if all_torrents is None:
             all_torrents = self.get_torrents()
 
+        if not media_path:
+            return []
+
         # Normaliser le chemin média sans resolve (évite les appels réseau)
-        media_path_normalized = str(Path(media_path)).rstrip("/")
+        # Utiliser os.path.normpath pour normaliser les séparateurs
+        import os
+        media_path_normalized = os.path.normpath(media_path).replace("\\", "/").rstrip("/")
         matching_hashes = []
 
         for torrent in all_torrents:
-            save_path_normalized = str(Path(torrent["save_path"])).rstrip("/")
-            content_path_normalized = str(Path(torrent.get("content_path", ""))).rstrip("/") if torrent.get("content_path") else None
+            # Normaliser les chemins du torrent
+            save_path = torrent.get("save_path", "")
+            if save_path:
+                save_path_normalized = os.path.normpath(save_path).replace("\\", "/").rstrip("/")
+            else:
+                save_path_normalized = ""
+            
+            content_path = torrent.get("content_path")
+            if content_path:
+                content_path_normalized = os.path.normpath(content_path).replace("\\", "/").rstrip("/")
+            else:
+                content_path_normalized = None
+
+            # Vérifier aussi le nom du torrent (peut contenir le nom du film/série)
+            torrent_name = torrent.get("name", "").lower()
 
             # Check if media_path is within save_path or matches content_path
             if self.match_mode == "path":
                 # Match by directory path (string comparison, much faster)
+                matched = False
+                
+                # 1. Vérifier content_path (plus précis)
                 if content_path_normalized:
                     if media_path_normalized == content_path_normalized or \
                        media_path_normalized.startswith(content_path_normalized + "/") or \
                        content_path_normalized.startswith(media_path_normalized + "/"):
-                        matching_hashes.append(torrent["hash"])
-                else:
-                    # Fallback: check if media_path is in save_path
+                        matched = True
+                
+                # 2. Vérifier save_path
+                if not matched and save_path_normalized:
                     if media_path_normalized == save_path_normalized or \
                        media_path_normalized.startswith(save_path_normalized + "/") or \
                        save_path_normalized.startswith(media_path_normalized + "/"):
-                        matching_hashes.append(torrent["hash"])
+                        matched = True
+                
+                # 3. Vérifier si le nom du média est dans le nom du torrent (fallback)
+                if not matched and torrent_name:
+                    # Extraire le nom du dossier/fichier depuis le chemin média
+                    media_name = os.path.basename(media_path_normalized).lower()
+                    if media_name and media_name in torrent_name:
+                        matched = True
+                
+                if matched:
+                    matching_hashes.append(torrent["hash"])
 
         return matching_hashes
 

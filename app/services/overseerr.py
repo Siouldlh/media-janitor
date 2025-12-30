@@ -103,6 +103,11 @@ class OverseerrService:
 
     def is_protected(self, media_item: MediaItem) -> tuple[bool, Optional[str]]:
         """Vérifie si un média est protégé par Overseerr."""
+        # Si le média a un request_id Overseerr, il provient d'Overseerr -> PROTÉGER TOUJOURS
+        if media_item.overseerr_request_id:
+            return True, f"Overseerr request (ID: {media_item.overseerr_request_id})"
+        
+        # Fallback: vérifier le status si pas de request_id mais status présent
         if not media_item.overseerr_status:
             return False, None
 

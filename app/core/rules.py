@@ -18,6 +18,7 @@ class RulesEngine:
             return False, None
 
         rules = self.config.rules.movies
+        strategy = rules.get("strategy", "not_watched_days")  # "never_watched_only" ou "not_watched_days"
         delete_if_not_watched_days = rules.get("delete_if_not_watched_days", 60)
         if_never_watched_use_added_days = rules.get("if_never_watched_use_added_days", 60)
 
@@ -34,9 +35,16 @@ class RulesEngine:
                 days_since_added = (datetime.now(added_date.tzinfo) - added_date).days
                 if days_since_added >= if_never_watched_use_added_days:
                     return True, f"never_watched_{if_never_watched_use_added_days}d"
+            # Si strategy = "never_watched_only", on retourne True même sans date d'ajout
+            if strategy == "never_watched_only":
+                return True, "never_watched"
             return False, None
 
-        # Si regardé, vérifier last_viewed_at
+        # Si strategy = "never_watched_only", on ne supprime pas les films déjà regardés
+        if strategy == "never_watched_only":
+            return False, None
+
+        # Si regardé, vérifier last_viewed_at (strategy = "not_watched_days")
         if media_item.last_viewed_at:
             days_since_watched = (datetime.now(media_item.last_viewed_at.tzinfo) - media_item.last_viewed_at).days
             if days_since_watched >= delete_if_not_watched_days:
