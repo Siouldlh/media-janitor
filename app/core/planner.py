@@ -155,7 +155,11 @@ class Planner:
                     if watch_stats:
                         item.last_viewed_at = watch_stats.get("last_watched_at")
                         item.view_count = watch_stats.get("view_count", 0)
-                        item.never_watched = watch_stats.get("never_watched", True)
+                        # Si on a des données avec last_watched_at ou view_count > 0, alors jamais vu = False
+                        if item.last_viewed_at or item.view_count > 0:
+                            item.never_watched = False
+                        else:
+                            item.never_watched = watch_stats.get("never_watched", True)
                         item.metadata["watch_source"] = "Tautulli"
                         item.metadata["last_watched_user"] = watch_stats.get("last_user")
                     else:
@@ -185,7 +189,11 @@ class Planner:
                     if watch_stats:
                         item.last_viewed_at = watch_stats.get("last_watched_at")
                         item.view_count = watch_stats.get("view_count", 0)
-                        item.never_watched = watch_stats.get("never_watched", True)
+                        # Si on a des données avec last_watched_at ou view_count > 0, alors jamais vu = False
+                        if item.last_viewed_at or item.view_count > 0:
+                            item.never_watched = False
+                        else:
+                            item.never_watched = watch_stats.get("never_watched", True)
                         item.metadata["watch_source"] = "Tautulli"
                         item.metadata["last_watched_user"] = watch_stats.get("last_user")
                     else:

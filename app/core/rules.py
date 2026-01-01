@@ -49,7 +49,24 @@ class RulesEngine:
             days_since_watched = (datetime.now(media_item.last_viewed_at.tzinfo) - media_item.last_viewed_at).days
             if days_since_watched >= delete_if_not_watched_days:
                 return True, f"not_watched_{delete_if_not_watched_days}d"
-
+            else:
+                # Vu récemment (moins de X jours) = ne pas supprimer
+                return False, None
+        
+        # Si jamais regardé mais pas de last_viewed_at, utiliser date d'ajout
+        if media_item.never_watched or media_item.view_count == 0:
+            added_date = media_item.metadata.get("added_at") or media_item.metadata.get("radarr_added") or media_item.metadata.get("sonarr_added")
+            if added_date:
+                if isinstance(added_date, str):
+                    try:
+                        added_date = datetime.fromisoformat(added_date.replace("Z", "+00:00"))
+                    except (ValueError, AttributeError):
+                        return False, None
+                days_since_added = (datetime.now(added_date.tzinfo) - added_date).days
+                if days_since_added >= if_never_watched_use_added_days:
+                    return True, f"never_watched_{if_never_watched_use_added_days}d"
+        
+        # Par défaut, ne pas supprimer (film récemment vu ou jamais vu mais récemment ajouté)
         return False, None
 
     def evaluate_series(self, media_item: MediaItem) -> Tuple[bool, Optional[str]]:
