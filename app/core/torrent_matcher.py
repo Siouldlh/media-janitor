@@ -129,6 +129,9 @@ class TorrentMatcher:
         torrent: Dict[str, Any]
     ) -> Tuple[bool, Optional[str]]:
         """Stratégie 2: Matching par fichiers dans le torrent."""
+        if not media_path:
+            return False, None
+            
         media_path_norm = self.normalize_path(media_path)
         media_name = os.path.basename(media_path_norm)
         media_name_clean = self.extract_title_clean(media_name)
@@ -137,19 +140,58 @@ class TorrentMatcher:
         if not torrent_files:
             return False, None
         
+        # Obtenir save_path et content_path pour construire les chemins complets des fichiers
+        save_path = torrent.get("save_path", "")
+        content_path = torrent.get("content_path", "")
+        torrent_name = torrent.get("name", "")
+        
+        # Base path pour les fichiers relatifs
+        base_path = None
+        if content_path:
+            base_path = content_path
+        elif save_path and torrent_name:
+            base_path = os.path.join(save_path, torrent_name).replace("\\", "/")
+        elif save_path:
+            base_path = save_path.replace("\\", "/")
+        
         for torrent_file in torrent_files:
             if not torrent_file:
                 continue
             
-            torrent_file_norm = self.normalize_path(torrent_file)
+            # Construire le chemin complet du fichier
+            torrent_file_str = str(torrent_file)
+            torrent_file_full = torrent_file_str
+            
+            # Si le fichier est relatif, le combiner avec base_path
+            if not os.path.isabs(torrent_file_str) and base_path:
+                torrent_file_full = os.path.join(base_path, torrent_file_str).replace("\\", "/")
+                torrent_file_full = torrent_file_full.replace("//", "/")
+            
+            torrent_file_norm = self.normalize_path(torrent_file_full)
             torrent_file_name = os.path.basename(torrent_file_norm)
             
             # Match exact du nom de fichier
             if media_name == torrent_file_name:
+                if self.debug:
+                    logger.debug("exact_filename_match",
+                               media_name=media_name,
+                               torrent_file=torrent_file_name)
                 return True, "exact_filename_match"
             
-            # Match du chemin complet
+            # Match du chemin complet (exact)
+            if media_path_norm == torrent_file_norm:
+                if self.debug:
+                    logger.debug("exact_file_path_match",
+                               media=media_path_norm[:80],
+                               torrent_file=torrent_file_norm[:80])
+                return True, "file_path_match"
+            
+            # Match partiel (un chemin est contenu dans l'autre)
             if media_path_norm in torrent_file_norm or torrent_file_norm in media_path_norm:
+                if self.debug:
+                    logger.debug("partial_file_path_match",
+                               media=media_path_norm[:80],
+                               torrent_file=torrent_file_norm[:80])
                 return True, "file_path_match"
             
             # Match partiel du nom nettoyé
@@ -159,6 +201,10 @@ class TorrentMatcher:
                     # Vérifier aussi la similarité (au moins 80% des caractères communs)
                     common_chars = sum(1 for c in media_name_clean if c in torrent_file_clean)
                     if len(media_name_clean) > 0 and common_chars / len(media_name_clean) >= 0.8:
+                        if self.debug:
+                            logger.debug("filename_partial_match",
+                                       media_clean=media_name_clean[:50],
+                                       torrent_clean=torrent_file_clean[:50])
                         return True, "filename_partial_match"
         
         return False, None
