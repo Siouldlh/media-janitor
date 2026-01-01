@@ -1,16 +1,19 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import usePlan from '../hooks/usePlan'
 import PlanHeader from '../components/plan/PlanHeader'
 import PlanItemList from '../components/plan/PlanItemList'
 import ConfirmationModal from '../components/ConfirmationModal'
-import { applyPlan, protectItem } from '../api'
+import { applyPlan, protectItem, getLatestPlan } from '../api'
 import { toast } from '../lib/toast.jsx'
 
 function Plans() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const planId = searchParams.get('planId') || searchParams.get('plan')
+  const planIdParam = searchParams.get('planId') || searchParams.get('plan')
+  const viewModeParam = searchParams.get('viewMode') || 'all'
+  const [planId, setPlanId] = useState(planIdParam)
+  const [loadingLatest, setLoadingLatest] = useState(false)
   
   const {
     plan,
@@ -25,7 +28,7 @@ function Plans() {
   const [applying, setApplying] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [requireConfirmPhrase, setRequireConfirmPhrase] = useState(null)
-  const [viewMode, setViewMode] = useState('all') // 'all', 'movies', 'series'
+  const [viewMode, setViewMode] = useState(viewModeParam) // 'all', 'movies', 'series'
   const [sortOption, setSortOption] = useState('alphabetical')
   const [sortDirection, setSortDirection] = useState('asc')
   const [filters, setFilters] = useState({
@@ -36,6 +39,50 @@ function Plans() {
     protectedFilter: 'all',
     rule: 'all'
   })
+
+  // Load latest plan if no planId provided
+  useEffect(() => {
+    const loadLatestPlan = async () => {
+      if (planId) return // Already have a planId
+      
+      setLoadingLatest(true)
+      try {
+        const latestPlan = await getLatestPlan()
+        setPlanId(latestPlan.id)
+        // Update URL with planId but keep viewMode
+        setSearchParams(prev => {
+          const newParams = new URLSearchParams(prev)
+          newParams.set('planId', latestPlan.id.toString())
+          return newParams
+        })
+      } catch (err) {
+        // No plan found, that's okay
+        console.log('No latest plan found:', err.message)
+      } finally {
+        setLoadingLatest(false)
+      }
+    }
+    
+    loadLatestPlan()
+  }, [planId, setSearchParams])
+
+  // Sync viewMode with URL param
+  useEffect(() => {
+    const urlViewMode = searchParams.get('viewMode') || 'all'
+    if (urlViewMode !== viewMode) {
+      setViewMode(urlViewMode)
+    }
+  }, [searchParams, viewMode])
+
+  // Update URL when viewMode changes
+  const handleViewModeChange = (newMode) => {
+    setViewMode(newMode)
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev)
+      newParams.set('viewMode', newMode)
+      return newParams
+    })
+  }
 
   // Load confirm phrase from config
   React.useEffect(() => {
@@ -112,23 +159,7 @@ function Plans() {
     return items
   }, [plan, viewMode])
 
-  if (!planId) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <p className="text-gray-500 mb-4">Aucun plan sélectionné</p>
-          <button
-            onClick={() => navigate('/')}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Retour au dashboard
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (loading) {
+  if (loading || loadingLatest) {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
@@ -148,14 +179,24 @@ function Plans() {
     )
   }
 
-  if (!plan) {
+  if (!plan && !loadingLatest) {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <p className="text-gray-500">Plan non trouvé</p>
+          <p className="text-gray-500 mb-4">Aucun plan trouvé</p>
+          <button
+            onClick={() => navigate('/')}
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Retour au dashboard pour créer un scan
+          </button>
         </div>
       </div>
     )
+  }
+
+  if (!plan) {
+    return null // Still loading
   }
 
   return (
@@ -173,7 +214,7 @@ function Plans() {
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex items-center space-x-4 mb-6">
           <button
-            onClick={() => setViewMode('all')}
+            onClick={() => handleViewModeChange('all')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               viewMode === 'all'
                 ? 'bg-blue-600 text-white'
@@ -183,7 +224,7 @@ function Plans() {
             Tous
           </button>
           <button
-            onClick={() => setViewMode('movies')}
+            onClick={() => handleViewModeChange('movies')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               viewMode === 'movies'
                 ? 'bg-blue-600 text-white'
@@ -193,7 +234,7 @@ function Plans() {
             Films ({plan.items?.filter(item => item.media_type === 'movie').length || 0})
           </button>
           <button
-            onClick={() => setViewMode('series')}
+            onClick={() => handleViewModeChange('series')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               viewMode === 'series'
                 ? 'bg-blue-600 text-white'

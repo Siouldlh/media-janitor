@@ -17,6 +17,12 @@ export async function getPlan(planId) {
   return response.json();
 }
 
+export async function getLatestPlan() {
+  const response = await fetch(`${API_BASE}/plans/latest`);
+  if (!response.ok) throw new Error('Failed to fetch latest plan');
+  return response.json();
+}
+
 export async function updateItems(planId, items, selectAll = null) {
   const response = await fetch(`${API_BASE}/plan/${planId}/items`, {
     method: 'PATCH',

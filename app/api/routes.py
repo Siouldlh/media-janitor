@@ -110,6 +110,40 @@ async def websocket_scan_progress(websocket: WebSocket, scan_id: str):
             pass
 
 
+@router.get("/api/plans/latest", response_model=PlanResponse)
+async def get_latest_plan(db: Session = Depends(get_db)):
+    """Récupère le dernier plan créé."""
+    plan = db.query(Plan).order_by(Plan.id.desc()).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="No plan found")
+    
+    items = db.query(PlanItem).filter(PlanItem.plan_id == plan.id).all()
+    
+    return PlanResponse(
+        id=plan.id,
+        status=plan.status,
+        created_at=plan.created_at,
+        summary=plan.summary_json or {},
+        items=[PlanItemResponse(
+            id=item.id,
+            selected=item.selected,
+            media_type=item.media_type,
+            title=item.title,
+            year=item.year,
+            ids=item.ids_json or {},
+            path=item.path,
+            size_bytes=item.size_bytes,
+            last_viewed_at=item.last_viewed_at,
+            view_count=item.view_count,
+            never_watched=item.never_watched,
+            rule=item.rule,
+            protected_reason=item.protected_reason,
+            qb_hashes=item.qb_hashes_json or [],
+            meta=item.meta_json or {}
+        ) for item in items]
+    )
+
+
 @router.get("/api/plan/{plan_id}", response_model=PlanResponse)
 async def get_plan(plan_id: int, db: Session = Depends(get_db)):
     """Récupère un plan avec ses items."""

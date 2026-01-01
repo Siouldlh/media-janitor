@@ -12,8 +12,8 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HiHome },
   { name: 'Plans', href: '/plans', icon: HiDocumentText },
-  { name: 'Films', href: '/movies', icon: HiFilm },
-  { name: 'Séries', href: '/series', icon: HiTv },
+  { name: 'Films', href: '/plans?viewMode=movies', icon: HiFilm },
+  { name: 'Séries', href: '/plans?viewMode=series', icon: HiTv },
   { name: 'Historique', href: '/history', icon: HiClock },
   { name: 'Paramètres', href: '/settings', icon: HiCog },
 ]
