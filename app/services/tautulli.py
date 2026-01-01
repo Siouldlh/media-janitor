@@ -62,13 +62,161 @@ class TautulliService:
             timeout=60.0
         )
         data = response.json()
-        # Tautulli API structure: response.data.data is the array
-        result = data.get("response", {}).get("data", {})
-        if isinstance(result, dict):
-            return result.get("data", [])
-        elif isinstance(result, list):
+        
+        # Tautulli API structure peut varier selon la version
+        # Format 1: response.data.data (array)
+        # Format 2: response.data (array directement)
+        # Format 3: response.data.data (dict avec clé "data")
+        response_obj = data.get("response", {})
+        result = response_obj.get("data", {})
+        
+        # Si result est directement une liste, la retourner
+        if isinstance(result, list):
+            logger.info("get_history_format", format="direct_list", count=len(result))
             return result
+        
+        # Si result est un dict, chercher la clé "data"
+        if isinstance(result, dict):
+            history_data = result.get("data", [])
+            if isinstance(history_data, list):
+                logger.info("get_history_format", format="nested_dict", count=len(history_data))
+                return history_data
+            # Si "data" n'existe pas, peut-être que result contient directement les entrées
+            # Vérifier si result a des clés qui ressemblent à des entrées d'historique
+            if result:
+                logger.warning("get_history_unexpected_format", keys=list(result.keys())[:5])
+        
+        logger.warning("get_history_no_data", response_structure=str(type(result)))
         return []
+
+    def _extract_tvdb_id_from_entry(self, entry: Dict[str, Any]) -> Optional[int]:
+        """Extrait le TVDb ID depuis une entrée d'historique Tautulli."""
+        # Méthode 1: Extraire depuis "guids" (array)
+        guids = entry.get("guids", [])
+        if guids:
+            for guid in guids:
+                if isinstance(guid, str) and "tvdb" in guid.lower():
+                    try:
+                        tvdb_id = int(guid.split(":")[-1].split("/")[-1])
+                        return tvdb_id
+                    except (ValueError, IndexError):
+                        continue
+                elif isinstance(guid, dict):
+                    guid_id = guid.get("id", "")
+                    if isinstance(guid_id, str) and "tvdb" in guid_id.lower():
+                        try:
+                            tvdb_id = int(guid_id.split(":")[-1].split("/")[-1])
+                            return tvdb_id
+                        except (ValueError, IndexError):
+                            continue
+        
+        # Méthode 2: Depuis "guid" (string unique)
+        guid_str = entry.get("guid", "")
+        if isinstance(guid_str, str) and "tvdb" in guid_str.lower():
+            try:
+                tvdb_id = int(guid_str.split(":")[-1].split("/")[-1])
+                return tvdb_id
+            except (ValueError, IndexError):
+                pass
+        
+        # Méthode 3: Fallback via get_metadata
+        rating_key = entry.get("rating_key")
+        if rating_key:
+            try:
+                metadata = self._get_metadata_sync(str(rating_key))
+                if metadata:
+                    metadata_guids = metadata.get("guids", [])
+                    for guid in metadata_guids:
+                        if isinstance(guid, str) and "tvdb" in guid.lower():
+                            try:
+                                tvdb_id = int(guid.split(":")[-1].split("/")[-1])
+                                return tvdb_id
+                            except (ValueError, IndexError):
+                                continue
+            except Exception as e:
+                logger.debug("get_metadata_fallback_failed_tvdb", rating_key=rating_key, error=str(e))
+        
+        return None
+
+    def _extract_tmdb_id_from_entry(self, entry: Dict[str, Any]) -> Optional[int]:
+        """Extrait le TMDb ID depuis une entrée d'historique Tautulli.
+        
+        Essaie plusieurs méthodes :
+        1. Depuis le champ "guids" (array de strings ou dicts)
+        2. Depuis le champ "guid" (string unique)
+        3. Depuis "rating_key" via get_metadata (fallback)
+        """
+        # Méthode 1: Extraire depuis "guids" (array)
+        guids = entry.get("guids", [])
+        if guids:
+            for guid in guids:
+                # Format string: "tmdb://12345" ou "tmdb:12345"
+                if isinstance(guid, str) and "tmdb" in guid.lower():
+                    try:
+                        # Format: "tmdb://12345" ou "tmdb:12345"
+                        tmdb_id = int(guid.split(":")[-1].split("/")[-1])
+                        return tmdb_id
+                    except (ValueError, IndexError):
+                        continue
+                # Format dict: {"id": "tmdb://12345", "source": "tmdb"}
+                elif isinstance(guid, dict):
+                    guid_id = guid.get("id", "")
+                    if isinstance(guid_id, str) and "tmdb" in guid_id.lower():
+                        try:
+                            tmdb_id = int(guid_id.split(":")[-1].split("/")[-1])
+                            return tmdb_id
+                        except (ValueError, IndexError):
+                            continue
+        
+        # Méthode 2: Extraire depuis "guid" (string unique, parfois présent)
+        guid_str = entry.get("guid", "")
+        if isinstance(guid_str, str) and "tmdb" in guid_str.lower():
+            try:
+                tmdb_id = int(guid_str.split(":")[-1].split("/")[-1])
+                return tmdb_id
+            except (ValueError, IndexError):
+                pass
+        
+        # Méthode 3: Fallback via get_metadata avec rating_key
+        rating_key = entry.get("rating_key")
+        if rating_key:
+            try:
+                metadata = self._get_metadata_sync(str(rating_key))
+                if metadata:
+                    # Les GUIDs dans metadata peuvent être dans un format différent
+                    metadata_guids = metadata.get("guids", [])
+                    for guid in metadata_guids:
+                        if isinstance(guid, str) and "tmdb" in guid.lower():
+                            try:
+                                tmdb_id = int(guid.split(":")[-1].split("/")[-1])
+                                return tmdb_id
+                            except (ValueError, IndexError):
+                                continue
+            except Exception as e:
+                logger.debug("get_metadata_fallback_failed", rating_key=rating_key, error=str(e))
+        
+        return None
+
+    def _get_metadata_sync(self, rating_key: str) -> Optional[Dict[str, Any]]:
+        """Récupère les métadonnées d'un média via rating_key (synchronous)."""
+        try:
+            http_client = get_http_client()
+            params = self._get_params()
+            params["cmd"] = "get_metadata"
+            params["rating_key"] = rating_key
+
+            response = http_client.get_sync(
+                f"{self.base_url}/api/v2",
+                service_name="tautulli",
+                params=params,
+                timeout=30.0
+            )
+            data = response.json()
+            response_obj = data.get("response", {})
+            return response_obj.get("data", {})
+        except Exception as e:
+            logger.debug("get_metadata_error", rating_key=rating_key, error=str(e))
+            return None
 
     def get_movie_watch_map(self) -> Dict[int, Dict[str, Any]]:
         """Récupère un mapping TMDb ID → watch stats pour tous les films.
@@ -83,29 +231,28 @@ class TautulliService:
         """
         logger.info("fetching_movie_watch_map")
         history = self.get_history_sync()
+        logger.info("history_retrieved", count=len(history))
         
         watch_map: Dict[int, Dict[str, Any]] = {}
+        skipped_no_tmdb = 0
         
         for entry in history:
             media_type = entry.get("media_type", "").lower()
-            if media_type != "movie":
+            # Tautulli peut retourner "movie" ou "film" selon la version
+            if media_type not in ["movie", "film"]:
                 continue
             
-            # Extraire TMDb ID depuis les GUIDs
-            tmdb_id = None
-            guids = entry.get("guids", [])
-            for guid in guids:
-                if isinstance(guid, str) and "tmdb" in guid.lower():
-                    try:
-                        # Format: "tmdb://12345" ou "tmdb:12345"
-                        tmdb_id = int(guid.split(":")[-1].split("/")[-1])
-                        break
-                    except (ValueError, IndexError):
-                        continue
+            # Extraire TMDb ID avec la nouvelle méthode robuste
+            tmdb_id = self._extract_tmdb_id_from_entry(entry)
             
             if not tmdb_id:
-                # Fallback: essayer d'extraire depuis title/year si disponible
-                # (moins fiable, mais mieux que rien)
+                skipped_no_tmdb += 1
+                # Log seulement les premiers pour éviter le spam
+                if skipped_no_tmdb <= 5:
+                    logger.debug("movie_entry_no_tmdb", 
+                               title=entry.get("title", "unknown"),
+                               rating_key=entry.get("rating_key"),
+                               guids=entry.get("guids", []))
                 continue
             
             # Date de visionnage
@@ -148,7 +295,10 @@ class TautulliService:
                     "never_watched": False
                 }
         
-        logger.info("movie_watch_map_fetched", count=len(watch_map))
+        logger.info("movie_watch_map_fetched", 
+                   count=len(watch_map), 
+                   skipped_no_tmdb=skipped_no_tmdb,
+                   total_history=len(history))
         return watch_map
 
     def get_episode_watch_map(self) -> Dict[Tuple[int, int, int], Dict[str, Any]]:
@@ -172,16 +322,8 @@ class TautulliService:
             if media_type not in ["episode", "show"]:
                 continue
             
-            # Extraire TVDb ID depuis les GUIDs
-            tvdb_id = None
-            guids = entry.get("guids", [])
-            for guid in guids:
-                if isinstance(guid, str) and "tvdb" in guid.lower():
-                    try:
-                        tvdb_id = int(guid.split(":")[-1].split("/")[-1])
-                        break
-                    except (ValueError, IndexError):
-                        continue
+            # Extraire TVDb ID avec la même logique robuste
+            tvdb_id = self._extract_tvdb_id_from_entry(entry)
             
             if not tvdb_id:
                 continue

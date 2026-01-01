@@ -72,10 +72,17 @@ class Planner:
                 logger.info("Fetching Tautulli watch history...")
                 tautulli_service = TautulliService()
                 movie_watch_map = tautulli_service.get_movie_watch_map()
+                logger.info("Tautulli movie watch map", count=len(movie_watch_map))
+                
                 episode_watch_map = tautulli_service.get_episode_watch_map()
+                logger.info("Tautulli episode watch map", count=len(episode_watch_map))
+                
                 series_watch_map = tautulli_service.get_series_watch_map()
-                logger.info(f"Tautulli: {len(movie_watch_map)} movies, {len(episode_watch_map)} episodes, {len(series_watch_map)} series")
-                self._emit_progress("tautulli_fetched", 15, f"Tautulli: {len(movie_watch_map)} films, {len(series_watch_map)} séries")
+                logger.info("Tautulli series watch map", count=len(series_watch_map))
+                
+                total_matched = len(movie_watch_map) + len(episode_watch_map) + len(series_watch_map)
+                logger.info(f"Tautulli: {len(movie_watch_map)} movies, {len(episode_watch_map)} episodes, {len(series_watch_map)} series (total: {total_matched})")
+                self._emit_progress("tautulli_fetched", 15, f"Tautulli: {len(movie_watch_map)} films, {len(episode_watch_map)} épisodes")
             except Exception as e:
                 logger.warning(f"Error fetching from Tautulli: {e}", exc_info=True)
                 self._emit_progress("tautulli_error", 15, f"Erreur Tautulli: {str(e)}")
@@ -162,11 +169,19 @@ class Planner:
                             item.never_watched = watch_stats.get("never_watched", True)
                         item.metadata["watch_source"] = "Tautulli"
                         item.metadata["last_watched_user"] = watch_stats.get("last_user")
+                        logger.debug("movie_enriched_tautulli",
+                                   title=item.title,
+                                   tmdb_id=item.tmdb_id,
+                                   view_count=item.view_count,
+                                   last_watched=item.last_viewed_at.isoformat() if item.last_viewed_at else None)
                     else:
                         # Pas de données Tautulli = jamais vu
                         item.never_watched = True
                         item.view_count = 0
                         item.metadata["watch_source"] = "Tautulli (never watched)"
+                        logger.debug("movie_no_tautulli_data",
+                                   title=item.title,
+                                   tmdb_id=item.tmdb_id)
                 
                 radarr_items.append(item)
         logger.info(f"Converted {len(radarr_items)} Radarr movies to MediaItems")

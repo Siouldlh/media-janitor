@@ -57,40 +57,74 @@ class QBittorrentService:
                 try:
                     files = client.torrents_files(torrent_hash=torrent.hash)
                     if files:
-                        # Les fichiers peuvent être des dicts ou des objets
+                        # Les fichiers peuvent être des dicts, des objets, ou des NamedTuples
                         for f in files:
+                            file_name = None
                             if isinstance(f, dict):
-                                file_name = f.get("name", "") or str(f)
+                                # Format dict: {"name": "...", "size": ...}
+                                file_name = f.get("name", "") or f.get("path", "")
+                            elif hasattr(f, "name"):
+                                # Format objet avec attribut name
+                                file_name = getattr(f, "name", None)
+                            elif hasattr(f, "path"):
+                                # Format objet avec attribut path
+                                file_name = getattr(f, "path", None)
+                            elif isinstance(f, (list, tuple)) and len(f) > 0:
+                                # Format tuple/list, le premier élément est souvent le nom
+                                file_name = str(f[0]) if f[0] else None
                             else:
-                                file_name = getattr(f, "name", "") or str(f)
+                                # Dernier recours: convertir en string
+                                file_name = str(f) if f else None
+                            
                             if file_name:
+                                # Normaliser le chemin (enlever les backslashes Windows)
+                                file_name = file_name.replace("\\", "/")
                                 torrent_files.append(file_name)
                 except Exception as e:
-                    logger.debug(f"Could not get files for torrent {torrent.hash}: {e}")
+                    logger.debug("torrent_files_error", 
+                               hash=torrent.hash[:8], 
+                               error=str(e))
                 
                 # Essayer d'obtenir content_path depuis différentes sources
                 content_path = None
+                # Méthode 1: Attribut direct content_path
                 if hasattr(torrent, "content_path") and torrent.content_path:
-                    content_path = torrent.content_path
+                    content_path = str(torrent.content_path).replace("\\", "/")
+                # Méthode 2: Depuis save_path + name
                 elif hasattr(torrent, "save_path") and torrent.save_path and hasattr(torrent, "name") and torrent.name:
-                    # Construire content_path depuis save_path + name
                     import os
-                    content_path = os.path.join(torrent.save_path, torrent.name).replace("\\", "/")
+                    save_path = str(torrent.save_path)
+                    name = str(torrent.name)
+                    content_path = os.path.join(save_path, name).replace("\\", "/")
+                # Méthode 3: Depuis le premier fichier si disponible
+                elif torrent_files:
+                    # Utiliser le répertoire du premier fichier comme content_path
+                    first_file = torrent_files[0]
+                    import os
+                    content_path = os.path.dirname(first_file).replace("\\", "/")
+                    if not content_path:
+                        # Si pas de répertoire, utiliser le nom du fichier
+                        content_path = first_file
                 
                 result.append({
                     "hash": torrent.hash,
-                    "name": torrent.name,
-                    "save_path": torrent.save_path,
-                    "category": torrent.category or "",
-                    "tags": torrent.tags.split(",") if torrent.tags else [],
-                    "state": torrent.state,
+                    "name": str(torrent.name) if hasattr(torrent, "name") else "",
+                    "save_path": str(torrent.save_path) if hasattr(torrent, "save_path") else "",
+                    "category": str(torrent.category) if hasattr(torrent, "category") and torrent.category else "",
+                    "tags": torrent.tags.split(",") if hasattr(torrent, "tags") and torrent.tags else [],
+                    "state": str(torrent.state) if hasattr(torrent, "state") else "",
                     "content_path": content_path,
-                    "size": torrent.size,
+                    "size": int(torrent.size) if hasattr(torrent, "size") else 0,
                     "files": torrent_files,  # Liste des fichiers dans le torrent
                 })
                 
                 if idx < 3:
-                    logger.debug(f"Sample torrent {idx+1}: name='{torrent.name[:50]}', save_path='{torrent.save_path[:50] if torrent.save_path else 'N/A'}', files={len(torrent_files)}")
+                    logger.debug("sample_torrent",
+                               index=idx+1,
+                               name=str(torrent.name)[:50] if hasattr(torrent, "name") else "N/A",
+                               save_path=str(torrent.save_path)[:50] if hasattr(torrent, "save_path") else "N/A",
+                               content_path=content_path[:50] if content_path else "N/A",
+                               files_count=len(torrent_files))
 
             total_files = sum(len(t.get("files", [])) for t in result)
             logger.info("torrents_retrieved", count=len(result), total_files=total_files)

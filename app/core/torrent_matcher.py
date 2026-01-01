@@ -16,12 +16,24 @@ class TorrentMatcher:
         self.debug = debug
     
     def normalize_path(self, path: str) -> str:
-        """Normalise un chemin pour comparaison."""
+        """Normalise un chemin pour comparaison.
+        
+        Gère les différences entre Windows et Linux, et normalise les chemins
+        pour permettre le matching même si les formats diffèrent.
+        """
         if not path:
             return ""
-        # Normaliser les séparateurs
-        normalized = os.path.normpath(path).replace("\\", "/").rstrip("/")
-        return normalized.lower()
+        # Convertir en string si ce n'est pas déjà le cas
+        path = str(path)
+        # Normaliser les séparateurs (Windows -> Unix)
+        normalized = os.path.normpath(path).replace("\\", "/")
+        # Enlever les trailing slashes
+        normalized = normalized.rstrip("/")
+        # Convertir en minuscules pour comparaison case-insensitive
+        normalized = normalized.lower()
+        # Enlever les espaces en début/fin
+        normalized = normalized.strip()
+        return normalized
     
     def extract_title_clean(self, title: str) -> str:
         """Extrait un titre nettoyé pour matching."""
@@ -253,7 +265,8 @@ class TorrentMatcher:
                 "torrent_matching_start",
                 media_path=media_path_norm[:100],
                 media_title=media_title,
-                total_torrents=len(all_torrents)
+                total_torrents=len(all_torrents),
+                media_path_original=media_path[:100] if media_path else None
             )
         
         for idx, torrent in enumerate(all_torrents):
@@ -269,7 +282,9 @@ class TorrentMatcher:
                         "torrent_matched",
                         hash=torrent["hash"][:8],
                         reason=match_reason,
-                        torrent_name=torrent.get("name", "")[:50]
+                        torrent_name=torrent.get("name", "")[:50],
+                        content_path=torrent.get("content_path", "")[:100],
+                        save_path=torrent.get("save_path", "")[:100]
                     )
                 continue
             
