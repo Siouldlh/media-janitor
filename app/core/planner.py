@@ -297,12 +297,16 @@ class Planner:
         # Enrichir les épisodes avec qBittorrent aussi
         if qb_service and episode_items:
             logger.info(f"Enriching {len(episode_items)} episodes with qBittorrent data...")
-            torrent_by_hash = {t["hash"]: t for t in qb_torrents}
-            for episode in episode_items:
+            torrent_by_hash = {t["hash"]: t for t in qb_torrents if t.get("hash")}
+            episode_matched_count = 0
+            for idx, episode in enumerate(episode_items):
                 primary_path = episode.get_primary_path()
                 if primary_path:
                     qb_hashes = qb_service.find_torrents_for_path(primary_path, qb_torrents, media_title=episode.title)
                     if qb_hashes:
+                        episode_matched_count += 1
+                        if idx < 5:  # Log first 5 matches
+                            logger.info(f"  ✓ Matched {len(qb_hashes)} torrent(s) for episode '{episode.title}'")
                         episode.qb_hashes.extend(qb_hashes)
                         # Stocker les noms des torrents dans metadata
                         torrent_names = []
@@ -315,6 +319,9 @@ class Planner:
                                 })
                         if torrent_names:
                             episode.metadata["qb_torrents"] = torrent_names
+                    elif idx < 3:  # Log first 3 non-matches
+                        logger.debug(f"  ✗ No torrents matched for episode '{episode.title}' (path: {primary_path[:60]}...)")
+            logger.info(f"Episode qBittorrent enrichment completed: {episode_matched_count}/{len(episode_items)} episodes have torrents")
 
         # Enrichir avec Overseerr requests
         if overseerr_service:

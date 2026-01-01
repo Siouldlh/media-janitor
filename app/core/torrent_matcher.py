@@ -255,6 +255,11 @@ class TorrentMatcher:
             Liste des hash des torrents correspondants
         """
         if not media_path or not all_torrents:
+            if self.debug:
+                logger.debug("torrent_matching_skipped", 
+                           reason="no_path_or_torrents",
+                           has_path=bool(media_path),
+                           has_torrents=bool(all_torrents))
             return []
         
         matching_hashes = []
@@ -268,34 +273,53 @@ class TorrentMatcher:
                 total_torrents=len(all_torrents),
                 media_path_original=media_path[:100] if media_path else None
             )
+            
+            # Log quelques exemples de torrents pour debug
+            sample_torrents = all_torrents[:3]
+            for idx, t in enumerate(sample_torrents):
+                logger.debug("sample_torrent_for_matching",
+                           index=idx,
+                           hash=t.get("hash", "")[:8] if t.get("hash") else "N/A",
+                           name=t.get("name", "")[:50] if t.get("name") else "N/A",
+                           content_path=t.get("content_path", "")[:80] if t.get("content_path") else "N/A",
+                           save_path=t.get("save_path", "")[:80] if t.get("save_path") else "N/A",
+                           files_count=len(t.get("files", [])))
         
         for idx, torrent in enumerate(all_torrents):
             matched = False
             match_reason = None
             
+            # Vérifier que le torrent a un hash valide
+            torrent_hash = torrent.get("hash")
+            if not torrent_hash:
+                if self.debug and idx < 5:
+                    logger.debug("torrent_no_hash", index=idx, torrent_keys=list(torrent.keys()))
+                continue
+            
             # Stratégie 1: Chemin exact (le plus fiable)
             matched, match_reason = self.match_by_exact_path(media_path, torrent)
             if matched:
-                matching_hashes.append(torrent["hash"])
+                matching_hashes.append(torrent_hash)
                 if self.debug and len(matching_hashes) <= 10:
                     logger.info(
                         "torrent_matched",
-                        hash=torrent["hash"][:8],
+                        hash=torrent_hash[:8],
                         reason=match_reason,
                         torrent_name=torrent.get("name", "")[:50],
                         content_path=torrent.get("content_path", "")[:100],
-                        save_path=torrent.get("save_path", "")[:100]
+                        save_path=torrent.get("save_path", "")[:100],
+                        media_path_norm=media_path_norm[:100]
                     )
                 continue
             
             # Stratégie 2: Fichiers dans le torrent
             matched, match_reason = self.match_by_torrent_files(media_path, torrent)
             if matched:
-                matching_hashes.append(torrent["hash"])
+                matching_hashes.append(torrent_hash)
                 if self.debug and len(matching_hashes) <= 10:
                     logger.info(
                         "torrent_matched",
-                        hash=torrent["hash"][:8],
+                        hash=torrent_hash[:8],
                         reason=match_reason,
                         torrent_name=torrent.get("name", "")[:50]
                     )
@@ -304,11 +328,11 @@ class TorrentMatcher:
             # Stratégie 3: Nom du torrent
             matched, match_reason = self.match_by_torrent_name(media_path, media_title, torrent)
             if matched:
-                matching_hashes.append(torrent["hash"])
+                matching_hashes.append(torrent_hash)
                 if self.debug and len(matching_hashes) <= 10:
                     logger.info(
                         "torrent_matched",
-                        hash=torrent["hash"][:8],
+                        hash=torrent_hash[:8],
                         reason=match_reason,
                         torrent_name=torrent.get("name", "")[:50]
                     )
@@ -317,11 +341,11 @@ class TorrentMatcher:
             # Stratégie 4: Année + titre
             matched, match_reason = self.match_by_year_and_title(media_path, media_title, torrent)
             if matched:
-                matching_hashes.append(torrent["hash"])
+                matching_hashes.append(torrent_hash)
                 if self.debug and len(matching_hashes) <= 10:
                     logger.info(
                         "torrent_matched",
-                        hash=torrent["hash"][:8],
+                        hash=torrent_hash[:8],
                         reason=match_reason,
                         torrent_name=torrent.get("name", "")[:50]
                     )
@@ -330,11 +354,11 @@ class TorrentMatcher:
             # Stratégie 5: Parties du chemin (dernier recours)
             matched, match_reason = self.match_by_path_parts(media_path, torrent)
             if matched:
-                matching_hashes.append(torrent["hash"])
+                matching_hashes.append(torrent_hash)
                 if self.debug and len(matching_hashes) <= 10:
                     logger.info(
                         "torrent_matched",
-                        hash=torrent["hash"][:8],
+                        hash=torrent_hash[:8],
                         reason=match_reason,
                         torrent_name=torrent.get("name", "")[:50]
                     )

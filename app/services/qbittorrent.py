@@ -87,15 +87,43 @@ class QBittorrentService:
                 
                 # Essayer d'obtenir content_path depuis différentes sources
                 content_path = None
-                # Méthode 1: Attribut direct content_path
+                
+                # Debug: logger les attributs disponibles
+                if idx < 3:
+                    torrent_attrs = [attr for attr in dir(torrent) if not attr.startswith("_")]
+                    logger.debug("torrent_attributes_sample",
+                               index=idx,
+                               hash=torrent.hash[:8] if hasattr(torrent, "hash") else "N/A",
+                               attrs=torrent_attrs[:20])
+                
+                # Méthode 1: Attribut direct content_path (peut ne pas exister dans toutes les versions)
                 if hasattr(torrent, "content_path") and torrent.content_path:
                     content_path = str(torrent.content_path).replace("\\", "/")
-                # Méthode 2: Depuis save_path + name
-                elif hasattr(torrent, "save_path") and torrent.save_path and hasattr(torrent, "name") and torrent.name:
+                    if idx < 3:
+                        logger.debug("content_path_from_attr", path=content_path[:80])
+                # Méthode 2: Depuis save_path + name (méthode standard)
+                elif hasattr(torrent, "save_path") and torrent.save_path:
                     import os
                     save_path = str(torrent.save_path)
-                    name = str(torrent.name)
-                    content_path = os.path.join(save_path, name).replace("\\", "/")
+                    # Le nom du torrent peut être dans différents attributs
+                    torrent_name = None
+                    if hasattr(torrent, "name") and torrent.name:
+                        torrent_name = str(torrent.name)
+                    elif hasattr(torrent, "title") and torrent.title:
+                        torrent_name = str(torrent.title)
+                    
+                    if torrent_name:
+                        content_path = os.path.join(save_path, torrent_name).replace("\\", "/")
+                        if idx < 3:
+                            logger.debug("content_path_from_save_path",
+                                       save_path=save_path[:60],
+                                       name=torrent_name[:50],
+                                       content_path=content_path[:80])
+                    else:
+                        # Si pas de nom, utiliser juste save_path
+                        content_path = save_path.replace("\\", "/")
+                        if idx < 3:
+                            logger.debug("content_path_from_save_path_only", path=content_path[:80])
                 # Méthode 3: Depuis le premier fichier si disponible
                 elif torrent_files:
                     # Utiliser le répertoire du premier fichier comme content_path
@@ -105,6 +133,8 @@ class QBittorrentService:
                     if not content_path:
                         # Si pas de répertoire, utiliser le nom du fichier
                         content_path = first_file
+                    if idx < 3:
+                        logger.debug("content_path_from_files", path=content_path[:80])
                 
                 result.append({
                     "hash": torrent.hash,
