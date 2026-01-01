@@ -31,6 +31,9 @@ function ScanProgress({ scanId, onComplete, onError }) {
         setTimeout(() => {
           if (onComplete) onComplete(data.plan_id)
         }, 1000)
+      } else if (data.status === 'completed' && !data.plan_id) {
+        // Plan créé mais plan_id pas encore disponible, attendre un peu
+        console.warn('Scan completed but plan_id not yet available, waiting...')
       } else if (data.status === 'error') {
         if (onError) onError(data.error || 'Scan failed')
       }

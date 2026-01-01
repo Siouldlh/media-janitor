@@ -96,8 +96,8 @@ class QBittorrentService:
             logger.info("torrents_retrieved", count=len(result), total_files=total_files)
             return result
         except Exception as e:
-            logger.exception("error_fetching_torrents", error=str(e))
-            raise Exception(f"Error fetching torrents from qBittorrent: {str(e)}")
+            logger.exception("error_fetching_torrents", exc_info=True)
+            raise
 
     def find_torrents_for_path(self, media_path: str, all_torrents: Optional[List[Dict[str, Any]]] = None, media_title: Optional[str] = None) -> List[str]:
         """Trouve tous les torrents (cross-seed) qui pointent vers un chemin média.

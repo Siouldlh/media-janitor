@@ -39,7 +39,7 @@ function SeriesTab() {
   const [showFilters, setShowFilters] = useState(false)
 
   const loadPlan = useCallback(async (restoreScroll = false) => {
-    if (!planId) return
+    if (!planId || planId === 'null' || planId === 'undefined') return
     setLoading(true)
     try {
       const data = await getPlan(planId)
