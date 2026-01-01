@@ -213,7 +213,52 @@ class MediaMatcher:
             items_with_path = 0
             items_without_path = 0
             # Créer un mapping hash -> torrent pour récupérer les noms
-            torrent_by_hash = {t["hash"]: t for t in qb_torrents}
+            torrent_by_hash = {t["hash"]: t for t in qb_torrents if t.get("hash")}
+            logger.info(f"Created torrent_by_hash mapping with {len(torrent_by_hash)} torrents")
+            
+            # Log quelques exemples de chemins média et torrents pour debug
+            if len(unified) > 0 and len(qb_torrents) > 0:
+                sample_item = unified[0]
+                sample_torrent = qb_torrents[0]
+                primary_path = sample_item.get_primary_path()
+                logger.info("matching_debug_samples",
+                           sample_media_path=primary_path[:100] if primary_path else "N/A",
+                           sample_media_title=sample_item.title[:50] if sample_item.title else "N/A",
+                           sample_media_type=sample_item.type,
+                           sample_radarr_path=sample_item.radarr_path[:80] if sample_item.radarr_path else "N/A",
+                           sample_sonarr_path=sample_item.sonarr_path[:80] if sample_item.sonarr_path else "N/A",
+                           sample_torrent_name=sample_torrent.get("name", "")[:50] if sample_torrent.get("name") else "N/A",
+                           sample_torrent_content_path=sample_torrent.get("content_path", "")[:100] if sample_torrent.get("content_path") else "N/A",
+                           sample_torrent_save_path=sample_torrent.get("save_path", "")[:80] if sample_torrent.get("save_path") else "N/A",
+                           sample_torrent_files_count=len(sample_torrent.get("files", [])),
+                           sample_torrent_first_file=sample_torrent.get("files", [""])[0][:80] if sample_torrent.get("files") else "N/A")
+                
+                # Tester le matching pour le premier item avec TOUS les torrents
+                if primary_path:
+                    test_hashes = qb_service.find_torrents_for_path(
+                        primary_path,
+                        qb_torrents,  # Tester avec TOUS les torrents
+                        media_title=sample_item.title
+                    )
+                    logger.info("matching_test_first_item",
+                               media_path=primary_path[:100],
+                               media_title=sample_item.title[:50],
+                               total_torrents_tested=len(qb_torrents),
+                               matches=len(test_hashes),
+                               matched_hashes=[h[:8] for h in test_hashes[:5]])
+                    
+                    # Si aucun match, logger les 5 premiers torrents pour comparaison
+                    if not test_hashes and len(qb_torrents) > 0:
+                        logger.warning("no_matches_for_first_item",
+                                     media_path=primary_path[:100],
+                                     sample_torrents=[
+                                         {
+                                             "name": t.get("name", "")[:60],
+                                             "content_path": t.get("content_path", "")[:80],
+                                             "save_path": t.get("save_path", "")[:60],
+                                         }
+                                         for t in qb_torrents[:5]
+                                     ])
             
             for idx, item in enumerate(unified):
                 if idx > 0 and idx % 200 == 0:
