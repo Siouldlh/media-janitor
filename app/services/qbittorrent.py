@@ -87,10 +87,8 @@ class QBittorrentService:
                 # Debug: logger les attributs disponibles
                 if idx < 3:
                     torrent_attrs = [attr for attr in dir(torrent) if not attr.startswith("_")]
-                    logger.debug("torrent_attributes_sample",
-                               index=idx,
-                               hash=torrent.hash[:8] if hasattr(torrent, "hash") else "N/A",
-                               attrs=torrent_attrs[:20])
+                    hash_str = torrent.hash[:8] if hasattr(torrent, "hash") else "N/A"
+                    logger.debug(f"Torrent {idx} attributes: hash={hash_str}, attrs={torrent_attrs[:20]}")
                 
                 # TOUJOURS construire content_path depuis save_path + name (MÉTHODE STANDARD)
                 # C'est la méthode la plus fiable car save_path et name sont toujours présents
