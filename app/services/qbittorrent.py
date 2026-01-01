@@ -96,15 +96,10 @@ class QBittorrentService:
                                hash=torrent.hash[:8] if hasattr(torrent, "hash") else "N/A",
                                attrs=torrent_attrs[:20])
                 
-                # PRIORITÉ 1: Attribut direct content_path (si disponible dans cette version)
-                if hasattr(torrent, "content_path") and torrent.content_path:
-                    content_path = str(torrent.content_path).replace("\\", "/").rstrip("/")
-                    if idx < 3:
-                        logger.debug("content_path_from_attr", path=content_path[:80])
-                
-                # PRIORITÉ 2: Construire depuis save_path + name (MÉTHODE STANDARD - TOUJOURS UTILISER)
+                # TOUJOURS construire content_path depuis save_path + name (MÉTHODE STANDARD)
                 # C'est la méthode la plus fiable car save_path et name sont toujours présents
-                if not content_path and hasattr(torrent, "save_path") and torrent.save_path:
+                # Même si content_path existe comme attribut, on le reconstruit pour être sûr
+                if hasattr(torrent, "save_path") and torrent.save_path:
                     import os
                     save_path = str(torrent.save_path).rstrip("/").rstrip("\\")
                     # Le nom du torrent peut être dans différents attributs
@@ -123,14 +118,15 @@ class QBittorrentService:
                             logger.debug("content_path_from_save_path",
                                        save_path=save_path[:60],
                                        name=torrent_name[:50],
-                                       content_path=content_path[:80])
+                                       content_path=content_path[:80],
+                                       has_content_path_attr=hasattr(torrent, "content_path"))
                     else:
                         # Si pas de nom, utiliser juste save_path (cas rare)
                         content_path = save_path.replace("\\", "/").rstrip("/")
                         if idx < 3:
                             logger.debug("content_path_from_save_path_only", path=content_path[:80])
                 
-                # PRIORITÉ 3: Depuis le premier fichier si disponible (fallback)
+                # FALLBACK: Depuis le premier fichier si save_path n'est pas disponible
                 if not content_path and torrent_files:
                     # Utiliser le répertoire du premier fichier comme content_path
                     first_file = torrent_files[0]
