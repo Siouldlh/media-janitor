@@ -388,7 +388,7 @@ class TorrentMatcher:
             torrent_hash = torrent.get("hash")
             if not torrent_hash:
                 if self.debug and idx < 5:
-                    logger.debug("torrent_no_hash", index=idx, torrent_keys=list(torrent.keys()))
+                    logger.debug(f"Torrent {idx} has no hash, keys: {list(torrent.keys())}")
                 continue
             
             # Stratégie 1: Chemin exact (le plus fiable)
