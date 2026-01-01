@@ -75,10 +75,10 @@ class Planner:
                 logger.info(f"Tautulli movie watch map: {len(movie_watch_map)} movies")
                 
                 episode_watch_map = tautulli_service.get_episode_watch_map()
-                logger.info("Tautulli episode watch map", count=len(episode_watch_map))
+                logger.info(f"Tautulli episode watch map: {len(episode_watch_map)} episodes")
                 
                 series_watch_map = tautulli_service.get_series_watch_map()
-                logger.info("Tautulli series watch map", count=len(series_watch_map))
+                logger.info(f"Tautulli series watch map: {len(series_watch_map)} series")
                 
                 total_matched = len(movie_watch_map) + len(episode_watch_map) + len(series_watch_map)
                 logger.info(f"Tautulli: {len(movie_watch_map)} movies, {len(episode_watch_map)} episodes, {len(series_watch_map)} series (total: {total_matched})")
