@@ -308,6 +308,8 @@ class TautulliService:
         
         watch_map: Dict[int, Dict[str, Any]] = {}
         skipped_no_tmdb = 0
+        # Cache pour éviter de multiples appels get_metadata pour le même rating_key
+        rating_key_to_tmdb_cache: Dict[str, Optional[int]] = {}
         
         for entry in history:
             media_type = entry.get("media_type", "").lower()
@@ -317,6 +319,29 @@ class TautulliService:
             
             # Extraire TMDb ID avec la nouvelle méthode robuste
             tmdb_id = self._extract_tmdb_id_from_entry(entry)
+            
+            # Si pas de TMDb ID trouvé, essayer via rating_key et get_metadata (fallback)
+            if not tmdb_id:
+                rating_key = entry.get("rating_key")
+                if rating_key:
+                    rating_key_str = str(rating_key)
+                    # Vérifier le cache d'abord
+                    if rating_key_str in rating_key_to_tmdb_cache:
+                        tmdb_id = rating_key_to_tmdb_cache[rating_key_str]
+                    else:
+                        # Appel get_metadata pour récupérer les GUIDs complets
+                        metadata = self._get_metadata_sync(rating_key_str)
+                        if metadata:
+                            # Essayer d'extraire TMDb ID depuis les GUIDs de metadata
+                            guids = metadata.get("guids", [])
+                            for guid in guids:
+                                if isinstance(guid, str):
+                                    extracted_id = self._extract_tmdb_id_from_guid(guid)
+                                    if extracted_id:
+                                        tmdb_id = extracted_id
+                                        break
+                        # Mettre en cache (même si None)
+                        rating_key_to_tmdb_cache[rating_key_str] = tmdb_id
             
             if not tmdb_id:
                 skipped_no_tmdb += 1
