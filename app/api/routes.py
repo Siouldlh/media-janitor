@@ -1,10 +1,12 @@
 """API routes."""
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List
 import logging
 import traceback
+import uuid
+import asyncio
 
 from app.db.database import get_db
 from app.db.models import Plan, PlanItem, Run, RunItem, Protection
@@ -29,34 +31,83 @@ router = APIRouter()
 @router.post("/api/scan", response_model=ScanResponse)
 async def scan():
     """Lance un scan et génère un plan."""
-    logger.info("=== Starting scan ===")
+    from app.main import scan_progress_store
+    
+    scan_id = str(uuid.uuid4())
+    logger.info(f"=== Starting scan {scan_id} ===")
+    
+    # Initialiser le store de progression
+    scan_progress_store[scan_id] = {
+        "status": "running",
+        "current_step": "initializing",
+        "progress": 0,
+        "total_steps": 10,
+        "logs": [],
+        "plan_id": None
+    }
+    
+    # Lancer le scan en arrière-plan
+    async def run_scan():
+        try:
+            planner = Planner(scan_id=scan_id)
+            plan_id = await planner.generate_plan()
+            logger.info(f"Scan {scan_id} completed successfully, plan_id: {plan_id}")
+            
+            scan_progress_store[scan_id].update({
+                "status": "completed",
+                "current_step": "completed",
+                "progress": 100,
+                "plan_id": plan_id
+            })
+        except Exception as e:
+            logger.exception(f"Scan {scan_id} failed with exception")
+            scan_progress_store[scan_id].update({
+                "status": "error",
+                "current_step": "error",
+                "error": str(e),
+                "error_type": e.__class__.__name__
+            })
+    
+    # Démarrer le scan en arrière-plan
+    asyncio.create_task(run_scan())
+    
+    return ScanResponse(plan_id=None, scan_id=scan_id, stats={"scan_id": scan_id})
+
+
+@router.websocket("/ws/scan/{scan_id}")
+async def websocket_scan_progress(websocket: WebSocket, scan_id: str):
+    """WebSocket endpoint pour recevoir la progression du scan en temps réel."""
+    from app.main import scan_progress_store
+    
+    await websocket.accept()
+    
     try:
-        planner = Planner()
-        plan_id = await planner.generate_plan()
-        logger.info(f"Scan completed successfully, plan_id: {plan_id}")
-
-        db = next(get_db())
-        plan = db.query(Plan).filter(Plan.id == plan_id).first()
-        stats = plan.summary_json if plan else {}
-
-        return ScanResponse(plan_id=plan_id, stats=stats)
+        while True:
+            # Envoyer l'état actuel de la progression
+            if scan_id in scan_progress_store:
+                progress_data = scan_progress_store[scan_id].copy()
+                await websocket.send_json(progress_data)
+                
+                # Si le scan est terminé ou en erreur, fermer la connexion après un délai
+                if progress_data["status"] in ["completed", "error"]:
+                    await asyncio.sleep(2)  # Attendre 2 secondes pour envoyer les derniers logs
+                    break
+            else:
+                await websocket.send_json({
+                    "status": "not_found",
+                    "message": f"Scan {scan_id} not found"
+                })
+                break
+            
+            await asyncio.sleep(0.5)  # Envoyer des mises à jour toutes les 500ms
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for scan {scan_id}")
     except Exception as e:
-        # Log la stacktrace complète
-        logger.exception("Scan failed with exception")
-        
-        # Préparer la réponse d'erreur détaillée
-        error_detail = {
-            "error": str(e),
-            "type": e.__class__.__name__,
-            "message": f"Scan failed: {str(e)}",
-            "traceback": traceback.format_exc()
-        }
-        
-        # Retourner une réponse JSON avec la stacktrace
-        return JSONResponse(
-            status_code=500,
-            content=error_detail
-        )
+        logger.exception(f"WebSocket error for scan {scan_id}")
+        try:
+            await websocket.close()
+        except:
+            pass
 
 
 @router.get("/api/plan/{plan_id}", response_model=PlanResponse)
@@ -348,4 +399,29 @@ async def update_config_endpoint(config_data: dict):
     except Exception as e:
         logger.exception("Failed to update config")
         raise HTTPException(status_code=500, detail=f"Failed to update config: {str(e)}")
+
+
+@router.get("/api/debug/qbittorrent/{torrent_hash}")
+async def debug_qbittorrent(torrent_hash: str):
+    """Debug endpoint pour tester le matching d'un torrent spécifique."""
+    try:
+        from app.services.qbittorrent import QBittorrentService
+        qb_service = QBittorrentService()
+        all_torrents = qb_service.get_torrents()
+        
+        torrent = next((t for t in all_torrents if t["hash"] == torrent_hash), None)
+        if not torrent:
+            raise HTTPException(status_code=404, detail=f"Torrent {torrent_hash} not found")
+        
+        return {
+            "hash": torrent["hash"],
+            "name": torrent["name"],
+            "save_path": torrent["save_path"],
+            "content_path": torrent.get("content_path"),
+            "files": torrent.get("files", [])[:10],  # Premiers 10 fichiers
+            "category": torrent["category"],
+        }
+    except Exception as e:
+        logger.exception("Debug qBittorrent failed")
+        raise HTTPException(status_code=500, detail=f"Debug failed: {str(e)}")
 

@@ -85,6 +85,9 @@ except Exception as e:
 # Create FastAPI app
 app = FastAPI(title="Media Janitor", version="1.0.0")
 
+# Store for scan progress events (in-memory, keyed by scan_id)
+scan_progress_store = {}
+
 # Include API routes
 app.include_router(router)
 

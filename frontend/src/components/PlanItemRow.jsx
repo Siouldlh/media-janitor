@@ -60,7 +60,10 @@ function PlanItemRow({ item, onToggle }) {
           <input
             type="checkbox"
             checked={item.selected}
-            onChange={(e) => onToggle(e.target.checked)}
+            onChange={(e) => {
+              e.preventDefault()
+              onToggle(e.target.checked)
+            }}
             disabled={isProtected}
           />
         </td>

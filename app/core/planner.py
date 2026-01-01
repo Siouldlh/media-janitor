@@ -22,20 +22,45 @@ from app.config import get_config
 class Planner:
     """Génère un plan de suppression."""
 
-    def __init__(self):
+    def __init__(self, scan_id: str = None):
         self.matcher = MediaMatcher()
         self.rules_engine = RulesEngine()
         self.safety_checker = SafetyChecker()
+        self.scan_id = scan_id
+
+    def _emit_progress(self, step: str, progress: int, message: str = None, data: dict = None):
+        """Émet un événement de progression si scan_id est défini."""
+        if not self.scan_id:
+            return
+        
+        from app.main import scan_progress_store
+        if self.scan_id in scan_progress_store:
+            scan_progress_store[self.scan_id].update({
+                "current_step": step,
+                "progress": progress,
+            })
+            if message:
+                scan_progress_store[self.scan_id]["logs"].append({
+                    "timestamp": datetime.now().isoformat(),
+                    "level": "info",
+                    "message": message
+                })
+                # Garder seulement les 100 derniers logs
+                scan_progress_store[self.scan_id]["logs"] = scan_progress_store[self.scan_id]["logs"][-100:]
+            if data:
+                scan_progress_store[self.scan_id].update(data)
 
     async def generate_plan(self) -> int:
         """Génère un plan de suppression et le sauvegarde en DB."""
         logger.info("Starting plan generation...")
+        self._emit_progress("initializing", 0, "Initialisation du scan...")
         db = get_db_sync()
 
         config = get_config()
 
         # Collecte des données depuis tous les services
         logger.info("Initializing services...")
+        self._emit_progress("plex_fetching", 10, "Récupération des données Plex...")
         plex_movies = []
         plex_series = []
         if config.plex:
@@ -43,11 +68,15 @@ class Planner:
                 logger.info("Fetching Plex movies and series...")
                 plex_service = PlexService()
                 plex_movies = plex_service.get_movies()
+                self._emit_progress("plex_fetching", 15, f"Plex: {len(plex_movies)} films récupérés")
                 plex_series = plex_service.get_series()
                 logger.info(f"Plex: {len(plex_movies)} movies, {len(plex_series)} series")
+                self._emit_progress("plex_fetched", 20, f"Plex: {len(plex_movies)} films, {len(plex_series)} séries")
             except Exception as e:
                 logger.warning(f"Error fetching from Plex: {e}")
+                self._emit_progress("plex_error", 20, f"Erreur Plex: {str(e)}")
 
+        self._emit_progress("radarr_fetching", 25, "Récupération des données Radarr...")
         radarr_movies_data = []
         radarr_service = None
         if config.radarr:
@@ -56,9 +85,12 @@ class Planner:
                 radarr_service = RadarrService()
                 radarr_movies_data = await radarr_service.get_movies()
                 logger.info(f"Radarr: {len(radarr_movies_data)} movies")
+                self._emit_progress("radarr_fetched", 30, f"Radarr: {len(radarr_movies_data)} films")
             except Exception as e:
                 logger.warning(f"Error fetching from Radarr: {e}")
+                self._emit_progress("radarr_error", 30, f"Erreur Radarr: {str(e)}")
 
+        self._emit_progress("sonarr_fetching", 35, "Récupération des données Sonarr...")
         sonarr_series_data = []
         sonarr_service = None
         if config.sonarr:
@@ -67,9 +99,12 @@ class Planner:
                 sonarr_service = SonarrService()
                 sonarr_series_data = await sonarr_service.get_series()
                 logger.info(f"Sonarr: {len(sonarr_series_data)} series")
+                self._emit_progress("sonarr_fetched", 40, f"Sonarr: {len(sonarr_series_data)} séries")
             except Exception as e:
                 logger.warning(f"Error fetching from Sonarr: {e}")
+                self._emit_progress("sonarr_error", 40, f"Erreur Sonarr: {str(e)}")
 
+        self._emit_progress("overseerr_fetching", 45, "Récupération des données Overseerr...")
         overseerr_requests = []
         overseerr_service = None
         if config.overseerr:
@@ -78,9 +113,12 @@ class Planner:
                 overseerr_service = OverseerrService()
                 overseerr_requests = await overseerr_service.get_requests()
                 logger.info(f"Overseerr: {len(overseerr_requests)} requests")
+                self._emit_progress("overseerr_fetched", 50, f"Overseerr: {len(overseerr_requests)} requêtes")
             except Exception as e:
                 logger.warning(f"Error fetching from Overseerr: {e}")
+                self._emit_progress("overseerr_error", 50, f"Erreur Overseerr: {str(e)}")
 
+        self._emit_progress("qbittorrent_fetching", 55, "Récupération des données qBittorrent...")
         qb_torrents = []
         qb_service = None
         if config.qbittorrent:
@@ -89,8 +127,10 @@ class Planner:
                 qb_service = QBittorrentService()
                 qb_torrents = qb_service.get_torrents()
                 logger.info(f"qBittorrent: {len(qb_torrents)} torrents")
+                self._emit_progress("qbittorrent_fetched", 60, f"qBittorrent: {len(qb_torrents)} torrents")
             except Exception as e:
                 logger.warning(f"Error fetching from qBittorrent: {e}")
+                self._emit_progress("qbittorrent_error", 60, f"Erreur qBittorrent: {str(e)}")
 
         # Conversion Radarr/Sonarr en MediaItem
         logger.info("Converting Radarr/Sonarr data to MediaItems...")
@@ -122,6 +162,7 @@ class Planner:
         logger.info(f"Converted {len(sonarr_items)} Sonarr series to MediaItems")
 
         # Unification des médias
+        self._emit_progress("matching_started", 65, "Matching et unification des médias...")
         logger.info("Matching and unifying media items across services...")
         all_plex = plex_movies + plex_series
         unified_items = self.matcher.unify_media_items(
@@ -133,6 +174,7 @@ class Planner:
             qb_service
         )
         logger.info(f"Unified {len(unified_items)} media items")
+        self._emit_progress("matching_completed", 75, f"Unification terminée: {len(unified_items)} items")
 
         # Enrichir avec Overseerr requests
         if overseerr_service:
@@ -142,6 +184,7 @@ class Planner:
             logger.info("Overseerr enrichment completed")
 
         # Évaluation des règles et garde-fous
+        self._emit_progress("rules_evaluating", 80, "Évaluation des règles et garde-fous...")
         logger.info("Evaluating rules and safety checks...")
         candidates = []
         max_items = config.app.max_items_per_scan if config.app else None
@@ -166,8 +209,10 @@ class Planner:
 
             candidates.append((item, rule))
         logger.info(f"Found {len(candidates)} candidates for deletion")
+        self._emit_progress("rules_evaluated", 85, f"Évaluation terminée: {len(candidates)} candidats")
 
         # Créer Plan en DB
+        self._emit_progress("plan_creating", 90, "Création du plan en base de données...")
         logger.info("Creating plan in database...")
         movies_count = sum(1 for item, _ in candidates if item.type == "movie")
         series_count = sum(1 for item, _ in candidates if item.type == "series")
@@ -190,11 +235,18 @@ class Planner:
 
         # Créer PlanItems
         logger.info("Creating plan items...")
+        invalid_types = []
         for item, rule in candidates:
+            # Validation du type
+            if item.type not in ["movie", "series", "episode"]:
+                invalid_types.append(f"{item.title} (type: {item.type})")
+                logger.warning(f"Invalid media type '{item.type}' for item '{item.title}', skipping")
+                continue
+            
             plan_item = PlanItem(
                 plan_id=plan.id,
                 selected=True,  # Par défaut sélectionné
-                media_type=item.type,
+                media_type=item.type,  # Validé ci-dessus
                 title=item.title,
                 year=item.year,
                 ids_json={
@@ -221,8 +273,12 @@ class Planner:
                 },
             )
             db.add(plan_item)
+        
+        if invalid_types:
+            logger.error(f"Found {len(invalid_types)} items with invalid types: {', '.join(invalid_types[:5])}")
 
         db.commit()
         logger.info(f"Plan {plan.id} completed with {len(candidates)} items")
+        self._emit_progress("plan_created", 100, f"Plan {plan.id} créé avec succès", {"plan_id": plan.id})
         return plan.id
 

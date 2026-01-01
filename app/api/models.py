@@ -5,7 +5,8 @@ from datetime import datetime
 
 
 class ScanResponse(BaseModel):
-    plan_id: int
+    plan_id: Optional[int] = None
+    scan_id: Optional[str] = None
     stats: Dict[str, Any]
 
 

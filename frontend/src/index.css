@@ -24,13 +24,20 @@ code {
   padding: 20px;
 }
 
+.table-container {
+  overflow-x: auto;
+  max-height: 70vh;
+  overflow-y: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
   background: white;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .table th,
@@ -45,8 +52,13 @@ code {
   font-weight: 600;
 }
 
-.table tr:hover {
+.table tbody tr:nth-child(even) {
   background-color: #f8f9fa;
+}
+
+.table tbody tr:hover {
+  background-color: #e9ecef;
+  transition: background-color 0.2s ease;
 }
 
 .btn {

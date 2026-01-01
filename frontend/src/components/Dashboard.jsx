@@ -1,24 +1,44 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { scan } from '../api'
+import ScanProgress from './ScanProgress'
 import './Dashboard.css'
 
 function Dashboard() {
   const navigate = useNavigate()
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState(null)
+  const [scanId, setScanId] = useState(null)
 
   const handleScan = async () => {
     setScanning(true)
     setError(null)
+    setScanId(null)
     try {
       const result = await scan()
-      navigate(`/movies?plan=${result.plan_id}`)
+      if (result.scan_id) {
+        // Scan avec progression en temps réel
+        setScanId(result.scan_id)
+      } else if (result.plan_id) {
+        // Scan terminé immédiatement (fallback)
+        navigate(`/movies?plan=${result.plan_id}`)
+        setScanning(false)
+      }
     } catch (err) {
       setError(err.message)
-    } finally {
       setScanning(false)
     }
+  }
+
+  const handleScanComplete = (planId) => {
+    setScanning(false)
+    navigate(`/movies?plan=${planId}`)
+  }
+
+  const handleScanError = (errorMessage) => {
+    setError(errorMessage)
+    setScanning(false)
+    setScanId(null)
   }
 
   return (
@@ -28,13 +48,25 @@ function Dashboard() {
         <h2>Dashboard</h2>
         <p>Lancez un scan pour générer un plan de suppression.</p>
         {error && <div className="error">{error}</div>}
-        <button
-          className="btn btn-primary"
-          onClick={handleScan}
-          disabled={scanning}
-        >
-          {scanning ? 'Scan en cours...' : 'Lancer un scan'}
-        </button>
+        {!scanning && (
+          <button
+            className="btn btn-primary"
+            onClick={handleScan}
+            disabled={scanning}
+          >
+            Lancer un scan
+          </button>
+        )}
+        {scanning && scanId && (
+          <ScanProgress
+            scanId={scanId}
+            onComplete={handleScanComplete}
+            onError={handleScanError}
+          />
+        )}
+        {scanning && !scanId && (
+          <div className="scan-loading">Initialisation du scan...</div>
+        )}
       </div>
       <div className="tabs">
         <button className="tab active" onClick={() => navigate('/')}>
@@ -58,4 +90,5 @@ function Dashboard() {
 }
 
 export default Dashboard
+
 

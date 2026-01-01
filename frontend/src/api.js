@@ -4,7 +4,10 @@ export async function scan() {
   const response = await fetch(`${API_BASE}/scan`, {
     method: 'POST',
   });
-  if (!response.ok) throw new Error('Scan failed');
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || error.message || 'Scan failed');
+  }
   return response.json();
 }
 

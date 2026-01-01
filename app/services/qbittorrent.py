@@ -186,10 +186,22 @@ class QBittorrentService:
                 
                 if matched:
                     matching_hashes.append(torrent["hash"])
-                    if not debug_logged and len(matching_hashes) <= 3:
-                        logger.debug(f"Matched torrent {torrent['hash'][:8]}... for {media_path} (reason: {match_reason})")
-                        if len(matching_hashes) == 3:
+                    if not debug_logged and len(matching_hashes) <= 5:
+                        logger.info(f"✓ Matched torrent {torrent['hash'][:8]}... for '{os.path.basename(media_path)}' (reason: {match_reason})")
+                        logger.debug(f"  Media path: {media_path_normalized}")
+                        logger.debug(f"  Torrent: {torrent_name[:50]}...")
+                        logger.debug(f"  Save path: {save_path_normalized[:50]}...")
+                        if content_path_normalized:
+                            logger.debug(f"  Content path: {content_path_normalized[:50]}...")
+                        if len(matching_hashes) == 5:
                             debug_logged = True
+        
+        if not matching_hashes and media_path:
+            # Logger un exemple de non-match pour debug (seulement pour les premiers items)
+            logger.debug(f"✗ No torrent match for '{os.path.basename(media_path)}'")
+            logger.debug(f"  Media path: {media_path_normalized}")
+            logger.debug(f"  Media dir: {media_dir}")
+            logger.debug(f"  Media name: {media_name}")
 
         return matching_hashes
 
