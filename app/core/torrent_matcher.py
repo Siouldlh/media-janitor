@@ -238,25 +238,55 @@ class TorrentMatcher:
         
         torrent_name_clean = self.extract_title_clean(torrent_name)
         
-        # Comparaison directe
+        # Comparaison directe (titre contenu dans le nom du torrent ou vice versa)
         if title_clean in torrent_name_clean or torrent_name_clean in title_clean:
-            # Vérifier aussi les chemins si disponibles
+            # Vérifier aussi les chemins si disponibles pour confirmer
             save_path = torrent.get("save_path", "")
+            content_path = torrent.get("content_path", "")
             media_dir = os.path.dirname(self.normalize_path(media_path))
-            if save_path and media_dir:
-                save_path_norm = self.normalize_path(save_path)
-                save_parts = [p for p in save_path_norm.split("/") if p and len(p) > 2]
-                media_parts = [p for p in media_dir.split("/") if p and len(p) > 2]
-                common_parts = set(save_parts) & set(media_parts)
-                if len(common_parts) > 0:
-                    return True, "torrent_name_with_common_path"
-            return True, "torrent_name_match"
+            
+            # Si on a un chemin commun, c'est un match sûr
+            if save_path or content_path:
+                save_path_norm = self.normalize_path(save_path) if save_path else ""
+                content_path_norm = self.normalize_path(content_path) if content_path else ""
+                media_dir_norm = self.normalize_path(media_dir) if media_dir else ""
+                
+                # Vérifier si les chemins ont des parties communes
+                if media_dir_norm:
+                    if save_path_norm and (media_dir_norm in save_path_norm or save_path_norm in media_dir_norm):
+                        return True, "torrent_name_with_common_path"
+                    if content_path_norm and (media_dir_norm in content_path_norm or content_path_norm in media_dir_norm):
+                        return True, "torrent_name_with_common_path"
+            
+            # Si pas de chemin commun mais match de titre, on accepte quand même
+            # mais seulement si le titre est assez long (évite les faux positifs)
+            if len(title_clean) >= 5:
+                return True, "torrent_name_match"
+            return False, None
         
-        # Similarité de caractères (au moins 60%)
+        # Similarité de caractères (seulement si très élevée: 85%+)
+        # ET seulement si on a un chemin commun pour éviter les faux positifs
         if len(title_clean) > 5:
             common_chars = sum(1 for c in title_clean if c in torrent_name_clean)
-            if common_chars / len(title_clean) >= 0.6:
-                return True, "torrent_name_similarity"
+            similarity = common_chars / len(title_clean) if len(title_clean) > 0 else 0
+            
+            # Seulement accepter si similarité très élevée (85%+) ET chemin commun
+            if similarity >= 0.85:
+                # Vérifier qu'on a un chemin commun pour confirmer
+                save_path = torrent.get("save_path", "")
+                content_path = torrent.get("content_path", "")
+                media_dir = os.path.dirname(self.normalize_path(media_path))
+                
+                if media_dir and (save_path or content_path):
+                    save_path_norm = self.normalize_path(save_path) if save_path else ""
+                    content_path_norm = self.normalize_path(content_path) if content_path else ""
+                    media_dir_norm = self.normalize_path(media_dir)
+                    
+                    # Vérifier si les chemins ont des parties communes
+                    if save_path_norm and (media_dir_norm in save_path_norm or save_path_norm in media_dir_norm):
+                        return True, "torrent_name_similarity_with_path"
+                    if content_path_norm and (media_dir_norm in content_path_norm or content_path_norm in media_dir_norm):
+                        return True, "torrent_name_similarity_with_path"
         
         return False, None
     
