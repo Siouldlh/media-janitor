@@ -212,6 +212,9 @@ class MediaMatcher:
             qb_matched_count = 0
             items_with_path = 0
             items_without_path = 0
+            # Créer un mapping hash -> torrent pour récupérer les noms
+            torrent_by_hash = {t["hash"]: t for t in qb_torrents}
+            
             for idx, item in enumerate(unified):
                 if idx > 0 and idx % 200 == 0:
                     logger.info(f"  Progress: {idx}/{len(unified)} items processed, {qb_matched_count} with torrents, {items_with_path} with paths")
@@ -224,7 +227,18 @@ class MediaMatcher:
                         qb_matched_count += 1
                         if idx < 10:  # Log first 10 matches for debugging
                             logger.info(f"  ✓ Matched {len(qb_hashes)} torrent(s) for '{item.title}' (path: {primary_path[:60]}...)")
-                    item.qb_hashes.extend(qb_hashes)
+                        item.qb_hashes.extend(qb_hashes)
+                        # Stocker les noms des torrents dans metadata
+                        torrent_names = []
+                        for hash_val in qb_hashes:
+                            torrent = torrent_by_hash.get(hash_val)
+                            if torrent:
+                                torrent_names.append({
+                                    "hash": hash_val,
+                                    "name": torrent.get("name", ""),
+                                })
+                        if torrent_names:
+                            item.metadata["qb_torrents"] = torrent_names
                 else:
                     items_without_path += 1
                     if idx < 5:

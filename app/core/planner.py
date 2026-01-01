@@ -293,6 +293,28 @@ class Planner:
         unified_items.extend(episode_items)
         logger.info(f"Unified {len(unified_items)} media items")
         self._emit_progress("matching_completed", 70, f"Unification terminée: {len(unified_items)} items")
+        
+        # Enrichir les épisodes avec qBittorrent aussi
+        if qb_service and episode_items:
+            logger.info(f"Enriching {len(episode_items)} episodes with qBittorrent data...")
+            torrent_by_hash = {t["hash"]: t for t in qb_torrents}
+            for episode in episode_items:
+                primary_path = episode.get_primary_path()
+                if primary_path:
+                    qb_hashes = qb_service.find_torrents_for_path(primary_path, qb_torrents, media_title=episode.title)
+                    if qb_hashes:
+                        episode.qb_hashes.extend(qb_hashes)
+                        # Stocker les noms des torrents dans metadata
+                        torrent_names = []
+                        for hash_val in qb_hashes:
+                            torrent = torrent_by_hash.get(hash_val)
+                            if torrent:
+                                torrent_names.append({
+                                    "hash": hash_val,
+                                    "name": torrent.get("name", ""),
+                                })
+                        if torrent_names:
+                            episode.metadata["qb_torrents"] = torrent_names
 
         # Enrichir avec Overseerr requests
         if overseerr_service:
