@@ -1,10 +1,10 @@
 """Overseerr API client."""
-import httpx
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
 from app.config import get_config
 from app.core.models import MediaItem
+from app.utils.http_client import get_http_client
 
 
 class OverseerrService:
@@ -26,45 +26,41 @@ class OverseerrService:
 
     async def get_requests(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         """Récupère les demandes depuis Overseerr."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            try:
-                params = {}
-                if status:
-                    params["filter"] = status
-                params["take"] = 1000  # Get all requests
-                params["skip"] = 0
+        http_client = get_http_client()
+        params = {}
+        if status:
+            params["filter"] = status
+        params["take"] = 1000  # Get all requests
+        params["skip"] = 0
 
-                response = await client.get(
-                    f"{self.base_url}/api/v1/request",
-                    headers=self._get_headers(),
-                    params=params,
-                )
-                response.raise_for_status()
-                data = response.json()
-                return data.get("results", [])
-            except httpx.HTTPError as e:
-                raise Exception(f"Error fetching requests from Overseerr: {str(e)}")
+        response = await http_client.get_async(
+            f"{self.base_url}/api/v1/request",
+            service_name="overseerr",
+            headers=self._get_headers(),
+            params=params,
+            timeout=30.0
+        )
+        data = response.json()
+        return data.get("results", [])
 
     def get_requests_sync(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         """Récupère les demandes depuis Overseerr (synchronous)."""
-        with httpx.Client(timeout=30.0) as client:
-            try:
-                params = {}
-                if status:
-                    params["filter"] = status
-                params["take"] = 1000
-                params["skip"] = 0
+        http_client = get_http_client()
+        params = {}
+        if status:
+            params["filter"] = status
+        params["take"] = 1000
+        params["skip"] = 0
 
-                response = client.get(
-                    f"{self.base_url}/api/v1/request",
-                    headers=self._get_headers(),
-                    params=params,
-                )
-                response.raise_for_status()
-                data = response.json()
-                return data.get("results", [])
-            except httpx.HTTPError as e:
-                raise Exception(f"Error fetching requests from Overseerr: {str(e)}")
+        response = http_client.get_sync(
+            f"{self.base_url}/api/v1/request",
+            service_name="overseerr",
+            headers=self._get_headers(),
+            params=params,
+            timeout=30.0
+        )
+        data = response.json()
+        return data.get("results", [])
 
     def enrich_media_item(self, media_item: MediaItem, overseerr_requests: List[Dict[str, Any]]) -> None:
         """Enrichit un MediaItem avec les données Overseerr."""

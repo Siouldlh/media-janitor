@@ -211,19 +211,25 @@ class MediaMatcher:
             logger.info(f"Enriching {len(unified)} items with qBittorrent data ({len(qb_torrents)} torrents available)...")
             qb_matched_count = 0
             items_with_path = 0
+            items_without_path = 0
             for idx, item in enumerate(unified):
                 if idx > 0 and idx % 200 == 0:
                     logger.info(f"  Progress: {idx}/{len(unified)} items processed, {qb_matched_count} with torrents, {items_with_path} with paths")
                 primary_path = item.get_primary_path()
                 if primary_path:
                     items_with_path += 1
-                    qb_hashes = qb_service.find_torrents_for_path(primary_path, qb_torrents)
+                    # Passer aussi le titre pour améliorer le matching (surtout pour séries)
+                    qb_hashes = qb_service.find_torrents_for_path(primary_path, qb_torrents, media_title=item.title)
                     if qb_hashes:
                         qb_matched_count += 1
-                        if idx < 5:  # Log first 5 matches for debugging
-                            logger.debug(f"  Matched {len(qb_hashes)} torrent(s) for {item.title} (path: {primary_path})")
+                        if idx < 10:  # Log first 10 matches for debugging
+                            logger.info(f"  ✓ Matched {len(qb_hashes)} torrent(s) for '{item.title}' (path: {primary_path[:60]}...)")
                     item.qb_hashes.extend(qb_hashes)
-            logger.info(f"qBittorrent enrichment completed: {qb_matched_count}/{items_with_path} items with paths have torrents")
+                else:
+                    items_without_path += 1
+                    if idx < 5:
+                        logger.debug(f"  No path for item '{item.title}' (type: {item.type})")
+            logger.info(f"qBittorrent enrichment completed: {qb_matched_count}/{items_with_path} items with paths have torrents ({items_without_path} items without paths)")
 
         return unified
 

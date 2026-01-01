@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { getPlan, updateItems, applyPlan } from '../api'
 import PlanItemRow from './PlanItemRow'
@@ -37,13 +37,8 @@ function MoviesTab() {
   })
   const [showFilters, setShowFilters] = useState(false)
 
-  useEffect(() => {
-    if (planId) {
-      loadPlan()
-    }
-  }, [planId])
-
-  const loadPlan = async (restoreScroll = false) => {
+  const loadPlan = useCallback(async (restoreScroll = false) => {
+    if (!planId) return
     setLoading(true)
     try {
       const data = await getPlan(planId)
@@ -68,14 +63,19 @@ function MoviesTab() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [planId])
 
-  const handleToggleItem = async (itemId, selected) => {
+  useEffect(() => {
+    if (planId) {
+      loadPlan()
+    }
+  }, [planId, loadPlan])
+
+  const handleToggleItem = useCallback(async (itemId, selected) => {
     // Sauvegarder la position de scroll avant la mise à jour
     scrollPositionRef.current = window.scrollY || window.pageYOffset
     
     try {
-      await updateItems(planId, [{ id: itemId, selected }])
       // Mettre à jour l'état local immédiatement pour éviter le re-render complet
       setPlan(prevPlan => {
         if (!prevPlan) return prevPlan
@@ -86,14 +86,20 @@ function MoviesTab() {
           )
         }
       })
+      
+      // Appel API en arrière-plan (ne bloque pas l'UI)
+      updateItems(planId, [{ id: itemId, selected }]).catch(err => {
+        setError(err.message)
+        // En cas d'erreur, recharger le plan complet
+        loadPlan(true)
+      })
     } catch (err) {
       setError(err.message)
-      // En cas d'erreur, recharger le plan complet
       loadPlan(true)
     }
-  }
+  }, [planId, loadPlan])
 
-  const handleSelectAll = async (selected) => {
+  const handleSelectAll = useCallback(async (selected) => {
     // Sauvegarder la position de scroll
     scrollPositionRef.current = window.scrollY || window.pageYOffset
     
@@ -103,7 +109,7 @@ function MoviesTab() {
     } catch (err) {
       setError(err.message)
     }
-  }
+  }, [planId, loadPlan])
 
   const handleApply = async (confirmPhrase) => {
     setApplying(true)

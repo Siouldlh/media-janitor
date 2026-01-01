@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { getPlan, updateItems, applyPlan } from '../api'
 import PlanItemRow from './PlanItemRow'
@@ -38,13 +38,8 @@ function SeriesTab() {
   })
   const [showFilters, setShowFilters] = useState(false)
 
-  useEffect(() => {
-    if (planId) {
-      loadPlan()
-    }
-  }, [planId])
-
-  const loadPlan = async (restoreScroll = false) => {
+  const loadPlan = useCallback(async (restoreScroll = false) => {
+    if (!planId) return
     setLoading(true)
     try {
       const data = await getPlan(planId)
@@ -69,14 +64,19 @@ function SeriesTab() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [planId])
 
-  const handleToggleItem = async (itemId, selected) => {
+  useEffect(() => {
+    if (planId) {
+      loadPlan()
+    }
+  }, [planId, loadPlan])
+
+  const handleToggleItem = useCallback(async (itemId, selected) => {
     // Sauvegarder la position de scroll avant la mise à jour
     scrollPositionRef.current = window.scrollY || window.pageYOffset
     
     try {
-      await updateItems(planId, [{ id: itemId, selected }])
       // Mettre à jour l'état local immédiatement pour éviter le re-render complet
       setPlan(prevPlan => {
         if (!prevPlan) return prevPlan
@@ -87,14 +87,20 @@ function SeriesTab() {
           )
         }
       })
+      
+      // Appel API en arrière-plan (ne bloque pas l'UI)
+      updateItems(planId, [{ id: itemId, selected }]).catch(err => {
+        setError(err.message)
+        // En cas d'erreur, recharger le plan complet
+        loadPlan(true)
+      })
     } catch (err) {
       setError(err.message)
-      // En cas d'erreur, recharger le plan complet
       loadPlan(true)
     }
-  }
+  }, [planId, loadPlan])
 
-  const handleSelectAll = async (selected) => {
+  const handleSelectAll = useCallback(async (selected) => {
     // Sauvegarder la position de scroll
     scrollPositionRef.current = window.scrollY || window.pageYOffset
     
@@ -104,7 +110,7 @@ function SeriesTab() {
     } catch (err) {
       setError(err.message)
     }
-  }
+  }, [planId, loadPlan])
 
   const handleApply = async (confirmPhrase) => {
     setApplying(true)
@@ -240,23 +246,43 @@ function SeriesTab() {
             >
               Vue épisodes
             </button>
-          </div>
-          <div className="plan-controls">
-            <label>
-              <input
-                type="checkbox"
-                checked={showProtected}
-                onChange={(e) => setShowProtected(e.target.checked)}
-              />
-              Afficher les items protégés
-            </label>
             <button
-              className="btn btn-secondary btn-small"
-              onClick={() => setShowFilters(!showFilters)}
+              className="btn btn-secondary"
+              onClick={() => handleSelectAll(true)}
             >
-              {showFilters ? 'Masquer filtres' : 'Afficher filtres'}
+              Tout sélectionner
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => handleSelectAll(false)}
+            >
+              Tout désélectionner
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={() => setShowConfirm(true)}
+              disabled={selectedCount === 0 || applying}
+            >
+              {applying ? 'Application...' : `Appliquer (${selectedCount})`}
             </button>
           </div>
+        </div>
+        <div className="plan-controls">
+          <label>
+            <input
+              type="checkbox"
+              checked={showProtected}
+              onChange={(e) => setShowProtected(e.target.checked)}
+            />
+            Afficher les items protégés
+          </label>
+          <button
+            className="btn btn-secondary btn-small"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            {showFilters ? 'Masquer filtres' : 'Afficher filtres'}
+          </button>
+        </div>
           
           {showFilters && (
             <div className="filters-panel">
@@ -350,28 +376,6 @@ function SeriesTab() {
                 <option value="desc">Décroissant</option>
               </select>
             </label>
-          </div>
-          
-          <div>
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleSelectAll(true)}
-            >
-              Tout sélectionner
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleSelectAll(false)}
-            >
-              Tout désélectionner
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={() => setShowConfirm(true)}
-              disabled={selectedCount === 0 || applying}
-            >
-              {applying ? 'Application...' : `Appliquer (${selectedCount})`}
-            </button>
           </div>
         </div>
         <div className="stats">

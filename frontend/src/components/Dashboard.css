@@ -1,8 +1,19 @@
 .error {
-  color: #dc3545;
-  margin: 10px 0;
-  padding: 10px;
-  background-color: #f8d7da;
-  border-radius: 4px;
+  color: #c33;
+  margin: 15px 0;
+  padding: 15px 20px;
+  background: linear-gradient(135deg, #fee 0%, #fdd 100%);
+  border-radius: 8px;
+  border: 1px solid #fcc;
+  box-shadow: 0 2px 4px rgba(204, 51, 51, 0.1);
+  font-weight: 500;
+}
+
+.scan-loading {
+  padding: 20px;
+  text-align: center;
+  color: #667eea;
+  font-size: 16px;
+  font-weight: 500;
 }
 

@@ -1,10 +1,10 @@
 """Radarr API client."""
-import httpx
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
 from app.config import get_config
 from app.core.models import MediaItem
+from app.utils.http_client import get_http_client
 
 
 class RadarrService:
@@ -29,82 +29,78 @@ class RadarrService:
         if self._tag_cache:
             return self._tag_cache
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            try:
-                response = await client.get(
-                    f"{self.base_url}/api/v3/tag",
-                    headers=self._get_headers(),
-                )
-                response.raise_for_status()
-                tags = response.json()
-                self._tag_cache = {tag.get("id"): tag.get("label", "") for tag in tags}
-                return self._tag_cache
-            except httpx.HTTPError as e:
-                # Si on ne peut pas récupérer les tags, retourner un cache vide
-                return {}
+        http_client = get_http_client()
+        try:
+            response = await http_client.get_async(
+                f"{self.base_url}/api/v3/tag",
+                service_name="radarr",
+                headers=self._get_headers(),
+                timeout=30.0
+            )
+            tags = response.json()
+            self._tag_cache = {tag.get("id"): tag.get("label", "") for tag in tags}
+            return self._tag_cache
+        except Exception as e:
+            # Si on ne peut pas récupérer les tags, retourner un cache vide
+            return {}
 
     def _get_tag_labels_sync(self) -> Dict[int, str]:
         """Récupère les labels des tags depuis Radarr (synchronous)."""
         if self._tag_cache:
             return self._tag_cache
         
-        with httpx.Client(timeout=30.0) as client:
-            try:
-                response = client.get(
-                    f"{self.base_url}/api/v3/tag",
-                    headers=self._get_headers(),
-                )
-                response.raise_for_status()
-                tags = response.json()
-                self._tag_cache = {tag.get("id"): tag.get("label", "") for tag in tags}
-                return self._tag_cache
-            except httpx.HTTPError as e:
-                # Si on ne peut pas récupérer les tags, retourner un cache vide
-                return {}
+        http_client = get_http_client()
+        try:
+            response = http_client.get_sync(
+                f"{self.base_url}/api/v3/tag",
+                service_name="radarr",
+                headers=self._get_headers(),
+                timeout=30.0
+            )
+            tags = response.json()
+            self._tag_cache = {tag.get("id"): tag.get("label", "") for tag in tags}
+            return self._tag_cache
+        except Exception as e:
+            # Si on ne peut pas récupérer les tags, retourner un cache vide
+            return {}
 
     async def get_movies(self) -> List[Dict[str, Any]]:
         """Récupère tous les films depuis Radarr."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            try:
-                response = await client.get(
-                    f"{self.base_url}/api/v3/movie",
-                    headers=self._get_headers(),
-                )
-                response.raise_for_status()
-                return response.json()
-            except httpx.HTTPError as e:
-                raise Exception(f"Error fetching movies from Radarr: {str(e)}")
+        http_client = get_http_client()
+        response = await http_client.get_async(
+            f"{self.base_url}/api/v3/movie",
+            service_name="radarr",
+            headers=self._get_headers(),
+            timeout=30.0
+        )
+        return response.json()
 
     def get_movies_sync(self) -> List[Dict[str, Any]]:
         """Récupère tous les films depuis Radarr (synchronous)."""
-        with httpx.Client(timeout=30.0) as client:
-            try:
-                response = client.get(
-                    f"{self.base_url}/api/v3/movie",
-                    headers=self._get_headers(),
-                )
-                response.raise_for_status()
-                return response.json()
-            except httpx.HTTPError as e:
-                raise Exception(f"Error fetching movies from Radarr: {str(e)}")
+        http_client = get_http_client()
+        response = http_client.get_sync(
+            f"{self.base_url}/api/v3/movie",
+            service_name="radarr",
+            headers=self._get_headers(),
+            timeout=30.0
+        )
+        return response.json()
 
     async def delete_movie(self, movie_id: int, delete_files: bool = True) -> bool:
         """Supprime un film via l'API Radarr."""
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            try:
-                params = {
-                    "deleteFiles": delete_files,
-                    "addImportExclusion": False,
-                }
-                response = await client.delete(
-                    f"{self.base_url}/api/v3/movie/{movie_id}",
-                    headers=self._get_headers(),
-                    params=params,
-                )
-                response.raise_for_status()
-                return True
-            except httpx.HTTPError as e:
-                raise Exception(f"Error deleting movie from Radarr: {str(e)}")
+        http_client = get_http_client()
+        params = {
+            "deleteFiles": delete_files,
+            "addImportExclusion": False,
+        }
+        await http_client.delete_async(
+            f"{self.base_url}/api/v3/movie/{movie_id}",
+            service_name="radarr",
+            headers=self._get_headers(),
+            params=params,
+            timeout=60.0
+        )
+        return True
 
     def enrich_media_item(self, media_item: MediaItem, radarr_movie: Dict[str, Any]) -> None:
         """Enrichit un MediaItem avec les données Radarr."""

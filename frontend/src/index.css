@@ -10,7 +10,11 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-attachment: fixed;
+  color: #333;
+  line-height: 1.6;
+  min-height: 100vh;
 }
 
 code {
@@ -19,17 +23,18 @@ code {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 30px 20px;
 }
 
 .table-container {
   overflow-x: auto;
   max-height: 70vh;
   overflow-y: auto;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+  background: white;
 }
 
 .table {
@@ -62,66 +67,83 @@ code {
 }
 
 .btn {
-  padding: 8px 16px;
+  padding: 10px 20px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
 }
 
 .btn-primary {
-  background-color: #007bff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #0056b3;
+  background: linear-gradient(135deg, #5568d3 0%, #653a8f 100%);
 }
 
 .btn-danger {
-  background-color: #dc3545;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: white;
 }
 
 .btn-danger:hover {
-  background-color: #c82333;
+  background: linear-gradient(135deg, #e082eb 0%, #e4465b 100%);
 }
 
 .btn-secondary {
-  background-color: #6c757d;
-  color: white;
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  color: #333;
 }
 
 .btn-secondary:hover {
-  background-color: #5a6268;
+  background: linear-gradient(135deg, #98ddd9 0%, #fec6d3 100%);
 }
 
 .tabs {
   display: flex;
-  border-bottom: 2px solid #dee2e6;
-  margin-bottom: 20px;
+  background: white;
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  gap: 8px;
 }
 
 .tab {
   padding: 12px 24px;
   cursor: pointer;
   border: none;
-  background: none;
-  font-size: 16px;
+  background: transparent;
+  font-size: 15px;
   font-weight: 500;
   color: #6c757d;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
 
 .tab.active {
-  color: #007bff;
-  border-bottom-color: #007bff;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.tab:hover {
-  color: #007bff;
+.tab:hover:not(.active) {
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
 }
 
 .modal {
@@ -172,10 +194,16 @@ code {
 
 .card {
   background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 20px;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+  margin-bottom: 25px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 12px rgba(0,0,0,0.15), 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .stats {
@@ -190,13 +218,41 @@ code {
 }
 
 .stat-value {
-  font-size: 32px;
+  font-size: 36px;
   font-weight: bold;
-  color: #007bff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .stat-label {
   color: #6c757d;
   font-size: 14px;
+}
+
+h1 {
+  margin-bottom: 25px;
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+h2 {
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.error {
+  background: linear-gradient(135deg, #fee 0%, #fdd 100%);
+  color: #c33;
+  padding: 15px 20px;
+  border-radius: 8px;
+  border: 1px solid #fcc;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(204, 51, 51, 0.1);
+  font-weight: 500;
 }
 

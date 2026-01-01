@@ -8,8 +8,9 @@ from pydantic_settings import BaseSettings
 
 
 class PlexConfig(BaseModel):
-    url: str
-    token: str
+    enabled: bool = False  # Désactivé par défaut, Tautulli est la source de vérité
+    url: Optional[str] = None
+    token: Optional[str] = None
     libraries: dict[str, str] = Field(default_factory=lambda: {"movies": "Films", "series": "Series"})
 
 
@@ -45,6 +46,7 @@ class QBittorrentConfig(BaseModel):
 
 
 class TautulliConfig(BaseModel):
+    enabled: bool = True  # Activé par défaut, source de vérité pour watch history
     url: str
     api_key: str
 

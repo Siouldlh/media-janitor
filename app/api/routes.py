@@ -17,11 +17,11 @@ from app.api.models import (
 from app.core.planner import Planner
 from app.core.executor import Executor
 from app.core.safety import SafetyChecker
-from app.services.plex import PlexService
 from app.services.radarr import RadarrService
 from app.services.sonarr import SonarrService
 from app.services.overseerr import OverseerrService
 from app.services.qbittorrent import QBittorrentService
+from app.services.tautulli import TautulliService
 from app.config import get_config
 
 logger = logging.getLogger(__name__)
@@ -260,21 +260,21 @@ async def diagnostics():
     """Vérifie les connexions aux APIs."""
     config = get_config()
     results = {
-        "plex": {"connected": False, "error": None},
+        "tautulli": {"connected": False, "error": None},
         "radarr": {"connected": False, "error": None},
         "sonarr": {"connected": False, "error": None},
         "overseerr": {"connected": False, "error": None},
         "qbittorrent": {"connected": False, "error": None},
     }
 
-    # Test Plex
-    if config.plex:
+    # Test Tautulli (source de vérité pour watch history)
+    if config.tautulli and config.tautulli.enabled:
         try:
-            service = PlexService()
-            service._get_server()
-            results["plex"]["connected"] = True
+            service = TautulliService()
+            service.get_history_sync()
+            results["tautulli"]["connected"] = True
         except Exception as e:
-            results["plex"]["error"] = str(e)
+            results["tautulli"]["error"] = str(e)
 
     # Test Radarr
     if config.radarr:
@@ -320,9 +320,9 @@ async def get_config_endpoint():
     """Récupère la configuration actuelle (sans secrets sensibles)."""
     config = get_config()
     return {
-        "plex": {
-            "url": config.plex.url if config.plex else None,
-            "libraries": config.plex.libraries if config.plex else {}
+        "tautulli": {
+            "url": config.tautulli.url if config.tautulli else None,
+            "enabled": config.tautulli.enabled if config.tautulli else False
         },
         "radarr": {
             "url": config.radarr.url if config.radarr else None,

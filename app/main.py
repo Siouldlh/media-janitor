@@ -5,19 +5,39 @@ from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
 import os
 import logging
+import structlog
 
 from app.config import init_config, get_config
 from app.db.database import init_db
 from app.api.routes import router
 from app.scheduler import start_scheduler
 
-# Setup logging (will be configured from config after init)
+# Setup structured logging
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer()
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+# Also configure standard logging for compatibility
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Initialize config
 # Support both /config/config.yaml (Docker) and ./config/config.yaml (local dev)

@@ -69,7 +69,7 @@ class ProtectRequest(BaseModel):
 
 
 class DiagnosticsResponse(BaseModel):
-    plex: Dict[str, Any]
+    tautulli: Dict[str, Any]
     radarr: Dict[str, Any]
     sonarr: Dict[str, Any]
     overseerr: Dict[str, Any]

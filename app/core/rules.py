@@ -60,6 +60,20 @@ class RulesEngine:
         rules = self.config.rules.series
         delete_entire_series_if_inactive_days = rules.get("delete_entire_series_if_inactive_days", 120)
 
+        # Si jamais regardée, utiliser date d'ajout
+        if media_item.never_watched or media_item.view_count == 0:
+            added_date = media_item.metadata.get("added_at") or media_item.metadata.get("sonarr_added")
+            if added_date:
+                if isinstance(added_date, str):
+                    try:
+                        added_date = datetime.fromisoformat(added_date.replace("Z", "+00:00"))
+                    except (ValueError, AttributeError):
+                        return False, None
+                days_since_added = (datetime.now(added_date.tzinfo) - added_date).days
+                if days_since_added >= delete_entire_series_if_inactive_days:
+                    return True, f"series_never_watched_{delete_entire_series_if_inactive_days}d"
+            return False, None
+
         # Vérifier si aucun épisode n'a été vu depuis X jours
         if media_item.last_viewed_at:
             days_since_watched = (datetime.now(media_item.last_viewed_at.tzinfo) - media_item.last_viewed_at).days

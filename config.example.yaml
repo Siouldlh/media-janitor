@@ -1,16 +1,17 @@
+# Plex est désactivé par défaut - Tautulli est la source de vérité pour watch history
+# Si vous avez besoin de Plex pour d'autres raisons, activez-le avec enabled: true
 plex:
-  # URL complète du serveur Plex (LAN ou Docker network)
-  # Exemple NAS: http://192.168.1.59:32400
-  # Exemple Docker network: http://plex:32400
-  url: "http://192.168.1.59:32400"
-  token: "PLEX_TOKEN"
-  libraries:
-    movies: "Films"
-    series: "Series"
+  enabled: false  # Désactivé par défaut - utiliser Tautulli uniquement
+  # url: "http://192.168.1.59:32400"
+  # token: "PLEX_TOKEN"
+  # libraries:
+  #   movies: "Films"
+  #   series: "Series"
 
 tautulli:
-  # URL complète de Tautulli (optionnel mais recommandé pour un historique de visionnage fiable)
+  # Tautulli est la source de vérité pour watch history (obligatoire)
   # Tautulli track toutes les sessions de visionnage, même si non marquées comme "vues" dans Plex
+  enabled: true  # Activé par défaut
   # Exemple NAS: http://192.168.1.59:8181
   # Exemple Docker network: http://tautulli:8181
   url: "http://192.168.1.59:8181"

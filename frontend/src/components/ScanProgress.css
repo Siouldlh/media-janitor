@@ -1,0 +1,111 @@
+.scan-progress {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.progress-header {
+  margin-bottom: 20px;
+}
+
+.progress-header h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+.progress-bar-container {
+  position: relative;
+  width: 100%;
+  height: 30px;
+  background: #e9ecef;
+  border-radius: 15px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #0056b3);
+  transition: width 0.3s ease;
+  border-radius: 15px;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: bold;
+  color: #333;
+  z-index: 1;
+}
+
+.current-step {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.progress-logs {
+  margin-top: 20px;
+}
+
+.progress-logs h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.logs-container {
+  max-height: 300px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.log-entry {
+  padding: 5px 0;
+  font-size: 12px;
+  font-family: monospace;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-time {
+  color: #666;
+  margin-right: 10px;
+}
+
+.log-message {
+  color: #333;
+}
+
+.log-info {
+  color: #333;
+}
+
+.log-warning {
+  color: #856404;
+}
+
+.log-error {
+  color: #dc3545;
+}
+
+.error-message {
+  margin-top: 15px;
+  padding: 10px;
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+

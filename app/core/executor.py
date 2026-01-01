@@ -7,7 +7,6 @@ from app.db.database import get_db_sync
 from app.services.radarr import RadarrService
 from app.services.sonarr import SonarrService
 from app.services.qbittorrent import QBittorrentService
-from app.services.plex import PlexService
 from app.config import get_config
 
 
@@ -19,7 +18,6 @@ class Executor:
         self.radarr_service = RadarrService() if self.config.radarr else None
         self.sonarr_service = SonarrService() if self.config.sonarr else None
         self.qb_service = QBittorrentService() if self.config.qbittorrent else None
-        self.plex_service = PlexService() if self.config.plex else None
 
     async def execute_plan(self, plan_id: int) -> int:
         """Exécute un plan (uniquement les items selected=true)."""
@@ -137,18 +135,7 @@ class Executor:
                     except Exception as e:
                         raise Exception(f"Sonarr deletion failed: {str(e)}")
 
-            # 3. Plex : Refresh/empty trash (optionnel)
-            if self.plex_service and self.config.plex:
-                try:
-                    # Refresh library (optionnel, peut être configuré)
-                    # self.plex_service.refresh_library()
-                    # self.plex_service.empty_trash()
-                    run_item.plex_refreshed = True
-                    run_item.plex_refreshed_at = datetime.utcnow()
-                    db.commit()
-                except Exception as e:
-                    # Plex refresh n'est pas critique, on continue
-                    pass
+            # 3. Plex refresh supprimé - plus utilisé (Tautulli uniquement)
 
             # Succès
             run_item.status = "SUCCESS"

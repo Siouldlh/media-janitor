@@ -9,11 +9,11 @@ logger = logging.getLogger(__name__)
 from app.core.matcher import MediaMatcher
 from app.core.rules import RulesEngine
 from app.core.safety import SafetyChecker
-from app.services.plex import PlexService
 from app.services.radarr import RadarrService
 from app.services.sonarr import SonarrService
 from app.services.overseerr import OverseerrService
 from app.services.qbittorrent import QBittorrentService
+from app.services.tautulli import TautulliService
 from app.db.models import Plan, PlanItem
 from app.db.database import get_db_sync
 from app.config import get_config
@@ -60,23 +60,27 @@ class Planner:
 
         # Collecte des données depuis tous les services
         logger.info("Initializing services...")
-        self._emit_progress("plex_fetching", 10, "Récupération des données Plex...")
-        plex_movies = []
-        plex_series = []
-        if config.plex:
+        
+        # Tautulli watch history (source de vérité)
+        self._emit_progress("tautulli_fetching", 10, "Récupération de l'historique Tautulli...")
+        movie_watch_map = {}
+        episode_watch_map = {}
+        series_watch_map = {}
+        tautulli_service = None
+        if config.tautulli and config.tautulli.enabled:
             try:
-                logger.info("Fetching Plex movies and series...")
-                plex_service = PlexService()
-                plex_movies = plex_service.get_movies()
-                self._emit_progress("plex_fetching", 15, f"Plex: {len(plex_movies)} films récupérés")
-                plex_series = plex_service.get_series()
-                logger.info(f"Plex: {len(plex_movies)} movies, {len(plex_series)} series")
-                self._emit_progress("plex_fetched", 20, f"Plex: {len(plex_movies)} films, {len(plex_series)} séries")
+                logger.info("Fetching Tautulli watch history...")
+                tautulli_service = TautulliService()
+                movie_watch_map = tautulli_service.get_movie_watch_map()
+                episode_watch_map = tautulli_service.get_episode_watch_map()
+                series_watch_map = tautulli_service.get_series_watch_map()
+                logger.info(f"Tautulli: {len(movie_watch_map)} movies, {len(episode_watch_map)} episodes, {len(series_watch_map)} series")
+                self._emit_progress("tautulli_fetched", 15, f"Tautulli: {len(movie_watch_map)} films, {len(series_watch_map)} séries")
             except Exception as e:
-                logger.warning(f"Error fetching from Plex: {e}")
-                self._emit_progress("plex_error", 20, f"Erreur Plex: {str(e)}")
+                logger.warning(f"Error fetching from Tautulli: {e}", exc_info=True)
+                self._emit_progress("tautulli_error", 15, f"Erreur Tautulli: {str(e)}")
 
-        self._emit_progress("radarr_fetching", 25, "Récupération des données Radarr...")
+        self._emit_progress("radarr_fetching", 20, "Récupération des données Radarr...")
         radarr_movies_data = []
         radarr_service = None
         if config.radarr:
@@ -85,12 +89,12 @@ class Planner:
                 radarr_service = RadarrService()
                 radarr_movies_data = await radarr_service.get_movies()
                 logger.info(f"Radarr: {len(radarr_movies_data)} movies")
-                self._emit_progress("radarr_fetched", 30, f"Radarr: {len(radarr_movies_data)} films")
+                self._emit_progress("radarr_fetched", 25, f"Radarr: {len(radarr_movies_data)} films")
             except Exception as e:
-                logger.warning(f"Error fetching from Radarr: {e}")
-                self._emit_progress("radarr_error", 30, f"Erreur Radarr: {str(e)}")
+                logger.warning(f"Error fetching from Radarr: {e}", exc_info=True)
+                self._emit_progress("radarr_error", 25, f"Erreur Radarr: {str(e)}")
 
-        self._emit_progress("sonarr_fetching", 35, "Récupération des données Sonarr...")
+        self._emit_progress("sonarr_fetching", 30, "Récupération des données Sonarr...")
         sonarr_series_data = []
         sonarr_service = None
         if config.sonarr:
@@ -99,12 +103,12 @@ class Planner:
                 sonarr_service = SonarrService()
                 sonarr_series_data = await sonarr_service.get_series()
                 logger.info(f"Sonarr: {len(sonarr_series_data)} series")
-                self._emit_progress("sonarr_fetched", 40, f"Sonarr: {len(sonarr_series_data)} séries")
+                self._emit_progress("sonarr_fetched", 35, f"Sonarr: {len(sonarr_series_data)} séries")
             except Exception as e:
-                logger.warning(f"Error fetching from Sonarr: {e}")
-                self._emit_progress("sonarr_error", 40, f"Erreur Sonarr: {str(e)}")
+                logger.warning(f"Error fetching from Sonarr: {e}", exc_info=True)
+                self._emit_progress("sonarr_error", 35, f"Erreur Sonarr: {str(e)}")
 
-        self._emit_progress("overseerr_fetching", 45, "Récupération des données Overseerr...")
+        self._emit_progress("overseerr_fetching", 40, "Récupération des données Overseerr...")
         overseerr_requests = []
         overseerr_service = None
         if config.overseerr:
@@ -113,12 +117,12 @@ class Planner:
                 overseerr_service = OverseerrService()
                 overseerr_requests = await overseerr_service.get_requests()
                 logger.info(f"Overseerr: {len(overseerr_requests)} requests")
-                self._emit_progress("overseerr_fetched", 50, f"Overseerr: {len(overseerr_requests)} requêtes")
+                self._emit_progress("overseerr_fetched", 45, f"Overseerr: {len(overseerr_requests)} requêtes")
             except Exception as e:
                 logger.warning(f"Error fetching from Overseerr: {e}")
-                self._emit_progress("overseerr_error", 50, f"Erreur Overseerr: {str(e)}")
+                self._emit_progress("overseerr_error", 45, f"Erreur Overseerr: {str(e)}")
 
-        self._emit_progress("qbittorrent_fetching", 55, "Récupération des données qBittorrent...")
+        self._emit_progress("qbittorrent_fetching", 50, "Récupération des données qBittorrent...")
         qb_torrents = []
         qb_service = None
         if config.qbittorrent:
@@ -127,12 +131,12 @@ class Planner:
                 qb_service = QBittorrentService()
                 qb_torrents = qb_service.get_torrents()
                 logger.info(f"qBittorrent: {len(qb_torrents)} torrents")
-                self._emit_progress("qbittorrent_fetched", 60, f"qBittorrent: {len(qb_torrents)} torrents")
+                self._emit_progress("qbittorrent_fetched", 55, f"qBittorrent: {len(qb_torrents)} torrents")
             except Exception as e:
                 logger.warning(f"Error fetching from qBittorrent: {e}")
-                self._emit_progress("qbittorrent_error", 60, f"Erreur qBittorrent: {str(e)}")
+                self._emit_progress("qbittorrent_error", 55, f"Erreur qBittorrent: {str(e)}")
 
-        # Conversion Radarr/Sonarr en MediaItem
+        # Conversion Radarr/Sonarr en MediaItem avec enrichissement Tautulli
         logger.info("Converting Radarr/Sonarr data to MediaItems...")
         radarr_items = []
         if radarr_service:
@@ -144,6 +148,22 @@ class Planner:
                     tmdb_id=movie_data.get("tmdbId"),
                 )
                 radarr_service.enrich_media_item(item, movie_data)
+                
+                # Enrichir avec Tautulli watch history
+                if tautulli_service and item.tmdb_id:
+                    watch_stats = movie_watch_map.get(item.tmdb_id)
+                    if watch_stats:
+                        item.last_viewed_at = watch_stats.get("last_watched_at")
+                        item.view_count = watch_stats.get("view_count", 0)
+                        item.never_watched = watch_stats.get("never_watched", True)
+                        item.metadata["watch_source"] = "Tautulli"
+                        item.metadata["last_watched_user"] = watch_stats.get("last_user")
+                    else:
+                        # Pas de données Tautulli = jamais vu
+                        item.never_watched = True
+                        item.view_count = 0
+                        item.metadata["watch_source"] = "Tautulli (never watched)"
+                
                 radarr_items.append(item)
         logger.info(f"Converted {len(radarr_items)} Radarr movies to MediaItems")
 
@@ -158,15 +178,30 @@ class Planner:
                     tmdb_id=series_data.get("tmdbId"),
                 )
                 sonarr_service.enrich_media_item(item, series_data)
+                
+                # Enrichir avec Tautulli watch history (série entière)
+                if tautulli_service and item.tvdb_id:
+                    watch_stats = series_watch_map.get(item.tvdb_id)
+                    if watch_stats:
+                        item.last_viewed_at = watch_stats.get("last_watched_at")
+                        item.view_count = watch_stats.get("view_count", 0)
+                        item.never_watched = watch_stats.get("never_watched", True)
+                        item.metadata["watch_source"] = "Tautulli"
+                        item.metadata["last_watched_user"] = watch_stats.get("last_user")
+                    else:
+                        # Pas de données Tautulli = jamais vu
+                        item.never_watched = True
+                        item.view_count = 0
+                        item.metadata["watch_source"] = "Tautulli (never watched)"
+                
                 sonarr_items.append(item)
         logger.info(f"Converted {len(sonarr_items)} Sonarr series to MediaItems")
 
-        # Unification des médias
-        self._emit_progress("matching_started", 65, "Matching et unification des médias...")
+        # Unification des médias (plus besoin de Plex)
+        self._emit_progress("matching_started", 60, "Matching et unification des médias...")
         logger.info("Matching and unifying media items across services...")
-        all_plex = plex_movies + plex_series
         unified_items = self.matcher.unify_media_items(
-            all_plex,
+            [],  # Plus de Plex items
             radarr_items,
             sonarr_items,
             [],
@@ -174,7 +209,7 @@ class Planner:
             qb_service
         )
         logger.info(f"Unified {len(unified_items)} media items")
-        self._emit_progress("matching_completed", 75, f"Unification terminée: {len(unified_items)} items")
+        self._emit_progress("matching_completed", 70, f"Unification terminée: {len(unified_items)} items")
 
         # Enrichir avec Overseerr requests
         if overseerr_service:
@@ -184,7 +219,7 @@ class Planner:
             logger.info("Overseerr enrichment completed")
 
         # Évaluation des règles et garde-fous
-        self._emit_progress("rules_evaluating", 80, "Évaluation des règles et garde-fous...")
+        self._emit_progress("rules_evaluating", 75, "Évaluation des règles et garde-fous...")
         logger.info("Evaluating rules and safety checks...")
         candidates = []
         max_items = config.app.max_items_per_scan if config.app else None
@@ -209,10 +244,10 @@ class Planner:
 
             candidates.append((item, rule))
         logger.info(f"Found {len(candidates)} candidates for deletion")
-        self._emit_progress("rules_evaluated", 85, f"Évaluation terminée: {len(candidates)} candidats")
+        self._emit_progress("rules_evaluated", 80, f"Évaluation terminée: {len(candidates)} candidats")
 
         # Créer Plan en DB
-        self._emit_progress("plan_creating", 90, "Création du plan en base de données...")
+        self._emit_progress("plan_creating", 85, "Création du plan en base de données...")
         logger.info("Creating plan in database...")
         movies_count = sum(1 for item, _ in candidates if item.type == "movie")
         series_count = sum(1 for item, _ in candidates if item.type == "series")

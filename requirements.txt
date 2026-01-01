@@ -1,12 +1,27 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
-sqlalchemy==2.0.23
-pyyaml==6.0.1
-httpx==0.25.2
-python-multipart==0.0.6
-apscheduler==3.10.4
-qbittorrent-api
-plexapi==4.15.0
+# Core FastAPI stack
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.10.0
+pydantic-settings==2.6.0
+python-multipart==0.0.12
+
+# Database
+sqlalchemy==2.0.36
+
+# HTTP client with retries
+httpx==0.28.1
+tenacity==9.0.0
+
+# Logging
+structlog==24.4.0
+
+# Configuration
+pyyaml==6.0.2
+
+# Scheduler
+apscheduler==3.10.7
+
+# Service APIs
+qbittorrent-api==2024.3.60
+# plexapi removed - using Tautulli only for watch history
 

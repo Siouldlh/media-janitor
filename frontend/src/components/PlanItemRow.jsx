@@ -1,10 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { protectItem } from '../api'
 import './PlanItemRow.css'
 
 function PlanItemRow({ item, onToggle }) {
   const [showDetails, setShowDetails] = useState(false)
   const [protecting, setProtecting] = useState(false)
+  
+  // Utiliser useCallback pour éviter les re-renders inutiles
+  const handleCheckboxChange = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onToggle(e.target.checked)
+  }, [onToggle])
 
   const formatDate = (date) => {
     if (!date) return 'Jamais vu'
@@ -60,11 +67,9 @@ function PlanItemRow({ item, onToggle }) {
           <input
             type="checkbox"
             checked={item.selected}
-            onChange={(e) => {
-              e.preventDefault()
-              onToggle(e.target.checked)
-            }}
+            onChange={handleCheckboxChange}
             disabled={isProtected}
+            onClick={(e) => e.stopPropagation()}
           />
         </td>
         <td>
@@ -114,6 +119,12 @@ function PlanItemRow({ item, onToggle }) {
                 <div>
                   <strong>Vues:</strong> {item.view_count}
                 </div>
+                {item.meta?.watch_source && (
+                  <div>
+                    <strong>Source watch history:</strong> {item.meta.watch_source}
+                    {item.meta.last_watched_user && ` (${item.meta.last_watched_user})`}
+                  </div>
+                )}
                 <div>
                   <strong>Torrents qBittorrent:</strong> {item.qb_hashes?.join(', ') || 'Aucun'}
                 </div>
