@@ -211,11 +211,19 @@ class Planner:
                             item.never_watched = watch_stats.get("never_watched", True)
                         item.metadata["watch_source"] = "Tautulli"
                         item.metadata["last_watched_user"] = watch_stats.get("last_user")
+                        logger.debug("series_enriched_tautulli",
+                                   title=item.title,
+                                   tvdb_id=item.tvdb_id,
+                                   view_count=item.view_count,
+                                   last_watched=item.last_viewed_at.isoformat() if item.last_viewed_at else None)
                     else:
                         # Pas de données Tautulli = jamais vu
                         item.never_watched = True
                         item.view_count = 0
                         item.metadata["watch_source"] = "Tautulli (never watched)"
+                        logger.debug("series_no_tautulli_data",
+                                   title=item.title,
+                                   tvdb_id=item.tvdb_id)
                 
                 sonarr_items.append(item)
         logger.info(f"Converted {len(sonarr_items)} Sonarr series to MediaItems")
