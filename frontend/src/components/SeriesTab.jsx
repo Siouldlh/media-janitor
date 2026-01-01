@@ -377,7 +377,7 @@ function SeriesTab() {
               </select>
             </label>
           </div>
-        </div>
+        
         <div className="stats">
           <div className="stat-item">
             <div className="stat-value">{selectedCount}</div>
