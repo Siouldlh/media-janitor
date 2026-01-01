@@ -255,14 +255,27 @@ class TautulliService:
                                guids=entry.get("guids", []))
                 continue
             
-            # Date de visionnage
-            date_timestamp = entry.get("date", 0)
+            # Date de visionnage - gérer timestamps Unix et ISO strings
+            date_value = entry.get("date")
             last_watched_at = None
-            if date_timestamp:
+            if date_value:
                 try:
-                    last_watched_at = datetime.fromtimestamp(date_timestamp)
-                except (ValueError, OSError):
-                    pass
+                    # Si c'est un timestamp Unix (int ou float)
+                    if isinstance(date_value, (int, float)):
+                        last_watched_at = datetime.fromtimestamp(date_value)
+                    # Si c'est une chaîne ISO
+                    elif isinstance(date_value, str):
+                        # Essayer d'abord le format ISO
+                        try:
+                            last_watched_at = datetime.fromisoformat(date_value.replace("Z", "+00:00"))
+                        except ValueError:
+                            # Fallback: essayer de parser comme timestamp string
+                            try:
+                                last_watched_at = datetime.fromtimestamp(float(date_value))
+                            except (ValueError, OSError):
+                                pass
+                except (ValueError, OSError, TypeError) as e:
+                    logger.debug("date_parsing_failed", date_value=date_value, error=str(e))
             
             # User
             last_user = entry.get("user", None)
