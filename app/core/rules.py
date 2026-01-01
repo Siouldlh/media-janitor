@@ -70,7 +70,12 @@ class RulesEngine:
         return False, None
 
     def evaluate_series(self, media_item: MediaItem) -> Tuple[bool, Optional[str]]:
-        """Évalue si une série est candidate à la suppression (série entière)."""
+        """Évalue si une série est candidate à la suppression (série entière).
+        
+        NOTE: Pour les séries avec épisodes réguliers, préférer la suppression d'épisodes individuels
+        plutôt que de la série entière. Cette méthode ne devrait être utilisée que pour les séries
+        complètement inactives depuis longtemps.
+        """
         if media_item.type != "series":
             return False, None
 
@@ -91,7 +96,7 @@ class RulesEngine:
                     return True, f"series_never_watched_{delete_entire_series_if_inactive_days}d"
             return False, None
 
-        # Vérifier si aucun épisode n'a été vu depuis X jours
+        # Vérifier si aucun épisode n'a été vu depuis X jours (série complètement inactive)
         if media_item.last_viewed_at:
             days_since_watched = (datetime.now(media_item.last_viewed_at.tzinfo) - media_item.last_viewed_at).days
             if days_since_watched >= delete_entire_series_if_inactive_days:

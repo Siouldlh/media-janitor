@@ -124,7 +124,8 @@ class Executor:
                     except Exception as e:
                         raise Exception(f"Radarr deletion failed: {str(e)}")
 
-            elif plan_item.media_type in ["series", "episode"] and self.sonarr_service:
+            elif plan_item.media_type == "series" and self.sonarr_service:
+                # Suppression de série entière
                 sonarr_id = plan_item.meta_json.get("sonarr_id")
                 if sonarr_id:
                     try:
@@ -133,7 +134,19 @@ class Executor:
                         run_item.radarr_sonarr_removed_at = datetime.utcnow()
                         db.commit()
                     except Exception as e:
-                        raise Exception(f"Sonarr deletion failed: {str(e)}")
+                        raise Exception(f"Sonarr series deletion failed: {str(e)}")
+            
+            elif plan_item.media_type == "episode" and self.sonarr_service:
+                # Suppression d'épisode individuel
+                episode_id = plan_item.meta_json.get("sonarr_episode_id")
+                if episode_id:
+                    try:
+                        await self.sonarr_service.delete_episode(episode_id, delete_files=True)
+                        run_item.radarr_sonarr_removed = True
+                        run_item.radarr_sonarr_removed_at = datetime.utcnow()
+                        db.commit()
+                    except Exception as e:
+                        raise Exception(f"Sonarr episode deletion failed: {str(e)}")
 
             # 3. Plex refresh supprimé - plus utilisé (Tautulli uniquement)
 

@@ -187,46 +187,95 @@ class Planner:
         logger.info(f"Converted {len(radarr_items)} Radarr movies to MediaItems")
 
         sonarr_items = []
+        episode_items = []
         if sonarr_service:
+            logger.info("Processing Sonarr series and episodes...")
             for series_data in sonarr_series_data:
-                item = MediaItem(
+                series_item = MediaItem(
                     type="series",
                     title=series_data.get("title", ""),
                     year=series_data.get("year"),
                     tvdb_id=series_data.get("tvdbId"),
                     tmdb_id=series_data.get("tmdbId"),
                 )
-                sonarr_service.enrich_media_item(item, series_data)
+                sonarr_service.enrich_media_item(series_item, series_data)
                 
                 # Enrichir avec Tautulli watch history (série entière)
-                if tautulli_service and item.tvdb_id:
-                    watch_stats = series_watch_map.get(item.tvdb_id)
+                if tautulli_service and series_item.tvdb_id:
+                    watch_stats = series_watch_map.get(series_item.tvdb_id)
                     if watch_stats:
-                        item.last_viewed_at = watch_stats.get("last_watched_at")
-                        item.view_count = watch_stats.get("view_count", 0)
-                        # Si on a des données avec last_watched_at ou view_count > 0, alors jamais vu = False
-                        if item.last_viewed_at or item.view_count > 0:
-                            item.never_watched = False
+                        series_item.last_viewed_at = watch_stats.get("last_watched_at")
+                        series_item.view_count = watch_stats.get("view_count", 0)
+                        if series_item.last_viewed_at or series_item.view_count > 0:
+                            series_item.never_watched = False
                         else:
-                            item.never_watched = watch_stats.get("never_watched", True)
-                        item.metadata["watch_source"] = "Tautulli"
-                        item.metadata["last_watched_user"] = watch_stats.get("last_user")
-                        logger.debug("series_enriched_tautulli",
-                                   title=item.title,
-                                   tvdb_id=item.tvdb_id,
-                                   view_count=item.view_count,
-                                   last_watched=item.last_viewed_at.isoformat() if item.last_viewed_at else None)
-                    else:
-                        # Pas de données Tautulli = jamais vu
-                        item.never_watched = True
-                        item.view_count = 0
-                        item.metadata["watch_source"] = "Tautulli (never watched)"
-                        logger.debug("series_no_tautulli_data",
-                                   title=item.title,
-                                   tvdb_id=item.tvdb_id)
+                            series_item.never_watched = watch_stats.get("never_watched", True)
+                        series_item.metadata["watch_source"] = "Tautulli"
+                        series_item.metadata["last_watched_user"] = watch_stats.get("last_user")
                 
-                sonarr_items.append(item)
-        logger.info(f"Converted {len(sonarr_items)} Sonarr series to MediaItems")
+                sonarr_items.append(series_item)
+                
+                # Récupérer les épisodes de cette série pour traitement individuel
+                series_id = series_data.get("id")
+                if series_id:
+                    try:
+                        episodes_data = sonarr_service.get_episodes_sync(series_id)
+                        logger.debug(f"Retrieved {len(episodes_data)} episodes for series '{series_item.title}'")
+                        
+                        for episode_data in episodes_data:
+                            # Créer un MediaItem pour chaque épisode
+                            episode_item = MediaItem(
+                                type="episode",
+                                title=f"{series_item.title} - S{episode_data.get('seasonNumber', 0):02d}E{episode_data.get('episodeNumber', 0):02d}",
+                                year=series_item.year,
+                                tvdb_id=series_item.tvdb_id,  # TVDb ID de la série
+                                tmdb_id=series_item.tmdb_id,
+                            )
+                            
+                            # Enrichir avec les données Sonarr de l'épisode
+                            episode_item.sonarr_path = episode_data.get("path")
+                            episode_item.monitored = episode_data.get("monitored", True)
+                            episode_item.metadata["sonarr_id"] = series_id
+                            episode_item.metadata["sonarr_episode_id"] = episode_data.get("id")
+                            episode_item.metadata["sonarr_title"] = series_item.title
+                            episode_item.metadata["series_title"] = series_item.title
+                            episode_item.metadata["season_number"] = episode_data.get("seasonNumber")
+                            episode_item.metadata["episode_number"] = episode_data.get("episodeNumber")
+                            episode_item.metadata["episode_title"] = episode_data.get("title", "")
+                            episode_item.metadata["sonarr_added"] = episode_data.get("added")
+                            
+                            # Taille de l'épisode
+                            if episode_data.get("episodeFile"):
+                                episode_file = episode_data.get("episodeFile", {})
+                                episode_item.size_bytes = episode_file.get("size", 0)
+                            
+                            # Enrichir avec Tautulli watch history (épisode individuel)
+                            if tautulli_service and episode_item.tvdb_id:
+                                season_num = episode_data.get("seasonNumber")
+                                episode_num = episode_data.get("episodeNumber")
+                                if season_num is not None and episode_num is not None:
+                                    watch_stats = episode_watch_map.get((episode_item.tvdb_id, int(season_num), int(episode_num)))
+                                    if watch_stats:
+                                        episode_item.last_viewed_at = watch_stats.get("last_watched_at")
+                                        episode_item.view_count = watch_stats.get("view_count", 0)
+                                        if episode_item.last_viewed_at or episode_item.view_count > 0:
+                                            episode_item.never_watched = False
+                                        else:
+                                            episode_item.never_watched = watch_stats.get("never_watched", True)
+                                        episode_item.metadata["watch_source"] = "Tautulli"
+                                        episode_item.metadata["last_watched_user"] = watch_stats.get("last_user")
+                                    else:
+                                        # Pas de données Tautulli = jamais vu
+                                        episode_item.never_watched = True
+                                        episode_item.view_count = 0
+                                        episode_item.metadata["watch_source"] = "Tautulli (never watched)"
+                            
+                            episode_items.append(episode_item)
+                    except Exception as e:
+                        logger.warning(f"Error fetching episodes for series '{series_item.title}': {e}", exc_info=True)
+                        # Continuer avec la série même si les épisodes échouent
+        
+        logger.info(f"Converted {len(sonarr_items)} Sonarr series and {len(episode_items)} episodes to MediaItems")
 
         # Unification des médias (plus besoin de Plex)
         self._emit_progress("matching_started", 60, "Matching et unification des médias...")
@@ -239,6 +288,9 @@ class Planner:
             qb_torrents,
             qb_service
         )
+        
+        # Ajouter les épisodes individuels (pas unifiés, traités séparément)
+        unified_items.extend(episode_items)
         logger.info(f"Unified {len(unified_items)} media items")
         self._emit_progress("matching_completed", 70, f"Unification terminée: {len(unified_items)} items")
 

@@ -110,6 +110,33 @@ class SonarrService:
         )
         return True
 
+    async def delete_episode(self, episode_id: int, delete_files: bool = True) -> bool:
+        """Supprime un épisode individuel via l'API Sonarr."""
+        http_client = get_http_client()
+        params = {
+            "deleteFiles": delete_files,
+        }
+        await http_client.delete_async(
+            f"{self.base_url}/api/v3/episode/{episode_id}",
+            service_name="sonarr",
+            headers=self._get_headers(),
+            params=params,
+            timeout=60.0
+        )
+        return True
+
+    def get_episodes_sync(self, series_id: int) -> List[Dict[str, Any]]:
+        """Récupère les épisodes d'une série (synchronous)."""
+        http_client = get_http_client()
+        response = http_client.get_sync(
+            f"{self.base_url}/api/v3/episode",
+            service_name="sonarr",
+            headers=self._get_headers(),
+            params={"seriesId": series_id},
+            timeout=30.0
+        )
+        return response.json()
+
     def enrich_media_item(self, media_item: MediaItem, sonarr_series: Dict[str, Any]) -> None:
         """Enrichit un MediaItem avec les données Sonarr."""
         media_item.sonarr_path = sonarr_series.get("path")
