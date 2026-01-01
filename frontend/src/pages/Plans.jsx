@@ -5,6 +5,7 @@ import PlanHeader from '../components/plan/PlanHeader'
 import PlanItemList from '../components/plan/PlanItemList'
 import ConfirmationModal from '../components/ConfirmationModal'
 import { applyPlan, protectItem } from '../api'
+import { toast } from '../lib/toast.jsx'
 
 function Plans() {
   const [searchParams] = useSearchParams()
