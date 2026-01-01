@@ -243,12 +243,10 @@ class MediaMatcher:
                         qb_torrents,  # Tester avec TOUS les torrents
                         media_title=sample_item.title
                     )
-                    logger.info("matching_test_first_item",
-                               media_path=primary_path[:100],
-                               media_title=sample_item.title[:50],
-                               total_torrents_tested=len(qb_torrents),
-                               matches=len(test_hashes),
-                               matched_hashes=[h[:8] for h in test_hashes[:5]])
+                    matched_hashes_str = [h[:8] for h in test_hashes[:5]]
+                    logger.info(f"matching_test_first_item: media_path={primary_path[:100]}, "
+                              f"media_title={sample_item.title[:50]}, total_torrents_tested={len(qb_torrents)}, "
+                              f"matches={len(test_hashes)}, matched_hashes={matched_hashes_str}")
                     
                     # Si aucun match, logger les 5 premiers torrents pour comparaison
                     if not test_hashes and len(qb_torrents) > 0:

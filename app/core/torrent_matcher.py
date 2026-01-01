@@ -190,25 +190,19 @@ class TorrentMatcher:
             # Match exact du nom de fichier
             if media_name == torrent_file_name:
                 if self.debug:
-                    logger.debug("exact_filename_match",
-                               media_name=media_name,
-                               torrent_file=torrent_file_name)
+                    logger.debug(f"exact_filename_match: media_name={media_name}, torrent_file={torrent_file_name}")
                 return True, "exact_filename_match"
             
             # Match du chemin complet (exact)
             if media_path_norm == torrent_file_norm:
                 if self.debug:
-                    logger.debug("exact_file_path_match",
-                               media=media_path_norm[:80],
-                               torrent_file=torrent_file_norm[:80])
+                    logger.debug(f"exact_file_path_match: media={media_path_norm[:80]}, torrent_file={torrent_file_norm[:80]}")
                 return True, "file_path_match"
             
             # Match partiel (un chemin est contenu dans l'autre)
             if media_path_norm in torrent_file_norm or torrent_file_norm in media_path_norm:
                 if self.debug:
-                    logger.debug("partial_file_path_match",
-                               media=media_path_norm[:80],
-                               torrent_file=torrent_file_norm[:80])
+                    logger.debug(f"partial_file_path_match: media={media_path_norm[:80]}, torrent_file={torrent_file_norm[:80]}")
                 return True, "file_path_match"
             
             # Match partiel du nom nettoyé
@@ -219,9 +213,7 @@ class TorrentMatcher:
                     common_chars = sum(1 for c in media_name_clean if c in torrent_file_clean)
                     if len(media_name_clean) > 0 and common_chars / len(media_name_clean) >= 0.8:
                         if self.debug:
-                            logger.debug("filename_partial_match",
-                                       media_clean=media_name_clean[:50],
-                                       torrent_clean=torrent_file_clean[:50])
+                            logger.debug(f"filename_partial_match: media_clean={media_name_clean[:50]}, torrent_clean={torrent_file_clean[:50]}")
                         return True, "filename_partial_match"
         
         return False, None
