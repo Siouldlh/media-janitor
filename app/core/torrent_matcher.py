@@ -86,13 +86,22 @@ class TorrentMatcher:
                                torrent=content_path_norm[:80])
                 return True, "path_parent_child"
         
-        # Vérifier save_path + name (reconstruction si content_path manquant)
+        # Vérifier save_path + name (TOUJOURS vérifier même si content_path existe)
         save_path = torrent.get("save_path", "")
         torrent_name = torrent.get("name", "")
         if save_path and torrent_name:
             # Construire le chemin complet
             full_path = os.path.join(save_path, torrent_name).replace("\\", "/")
             full_path_norm = self.normalize_path(full_path)
+            
+            # Si content_path existe mais est différent, logger pour debug
+            if content_path and self.debug:
+                content_path_norm_check = self.normalize_path(content_path)
+                if full_path_norm != content_path_norm_check:
+                    logger.debug("content_path_mismatch",
+                               constructed=full_path_norm[:80],
+                               from_attr=content_path_norm_check[:80])
+            
             # Match exact
             if media_path_norm == full_path_norm:
                 if self.debug:
@@ -120,6 +129,14 @@ class TorrentMatcher:
                                media=media_path_norm[:80],
                                torrent=save_path_norm[:80])
                 return True, "save_path_only"
+        
+        # Si aucun match, logger pour debug (seulement pour les premiers)
+        if self.debug:
+            logger.debug("no_path_match",
+                       media=media_path_norm[:80],
+                       torrent_content_path=content_path[:80] if content_path else "N/A",
+                       torrent_save_path=save_path[:60] if save_path else "N/A",
+                       torrent_name=torrent_name[:50] if torrent_name else "N/A")
         
         return False, None
     

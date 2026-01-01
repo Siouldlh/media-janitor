@@ -459,3 +459,90 @@ async def debug_qbittorrent(torrent_hash: str):
         logger.exception("Debug qBittorrent failed")
         raise HTTPException(status_code=500, detail=f"Debug failed: {str(e)}")
 
+
+@router.get("/api/debug/matching/{plan_id}")
+async def debug_matching(plan_id: int, db: Session = Depends(get_db)):
+    """Debug endpoint pour analyser le matching torrents/médias."""
+    try:
+        from app.services.qbittorrent import QBittorrentService
+        from app.services.radarr import RadarrService
+        from app.services.sonarr import SonarrService
+        from app.core.torrent_matcher import TorrentMatcher
+        
+        # Récupérer le plan
+        plan = db.query(Plan).filter(Plan.id == plan_id).first()
+        if not plan:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        
+        plan_items = db.query(PlanItem).filter(PlanItem.plan_id == plan_id).limit(5).all()
+        
+        # Récupérer les torrents
+        qb_service = QBittorrentService()
+        all_torrents = qb_service.get_torrents()
+        
+        # Récupérer les médias depuis Radarr/Sonarr
+        radarr_service = RadarrService() if get_config().radarr else None
+        sonarr_service = SonarrService() if get_config().sonarr else None
+        
+        radarr_movies = []
+        if radarr_service:
+            try:
+                radarr_movies = radarr_service.get_movies_sync()
+            except Exception as e:
+                logger.warning(f"Error fetching Radarr movies: {e}")
+        
+        # Créer le matcher
+        matcher = TorrentMatcher(debug=True)
+        
+        debug_results = []
+        
+        for item in plan_items[:3]:  # Analyser les 3 premiers items
+            media_path = item.path
+            if not media_path:
+                continue
+            
+            # Tester le matching
+            matching_hashes = matcher.find_matching_torrents(
+                media_path=media_path,
+                all_torrents=all_torrents,
+                media_title=item.title
+            )
+            
+            # Trouver le média correspondant dans Radarr
+            radarr_movie = None
+            if radarr_service and item.ids_json:
+                tmdb_id = item.ids_json.get("tmdb")
+                if tmdb_id:
+                    radarr_movie = next((m for m in radarr_movies if m.get("tmdbId") == tmdb_id), None)
+            
+            debug_results.append({
+                "plan_item": {
+                    "id": item.id,
+                    "title": item.title,
+                    "media_type": item.media_type,
+                    "path": media_path,
+                    "tmdb_id": item.ids_json.get("tmdb") if item.ids_json else None,
+                },
+                "radarr_path": radarr_movie.get("path") if radarr_movie else None,
+                "matching_torrents": len(matching_hashes),
+                "torrent_hashes": matching_hashes[:5],
+                "sample_torrents": [
+                    {
+                        "hash": t["hash"][:8],
+                        "name": t["name"][:80],
+                        "content_path": t.get("content_path", "")[:80],
+                        "save_path": t.get("save_path", "")[:80],
+                    }
+                    for t in all_torrents[:5]
+                ]
+            })
+        
+        return {
+            "total_torrents": len(all_torrents),
+            "plan_items_analyzed": len(debug_results),
+            "results": debug_results
+        }
+    except Exception as e:
+        logger.exception("Debug matching failed")
+        raise HTTPException(status_code=500, detail=f"Debug failed: {str(e)}")
+
