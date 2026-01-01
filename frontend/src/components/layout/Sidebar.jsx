@@ -2,7 +2,7 @@ import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { 
   HiHome, 
-  HiClipboardList, 
+  HiDocumentText, 
   HiFilm, 
   HiTv, 
   HiClock, 
@@ -11,7 +11,7 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HiHome },
-  { name: 'Plans', href: '/plans', icon: HiClipboardList },
+  { name: 'Plans', href: '/plans', icon: HiDocumentText },
   { name: 'Films', href: '/movies', icon: HiFilm },
   { name: 'Séries', href: '/series', icon: HiTv },
   { name: 'Historique', href: '/history', icon: HiClock },
