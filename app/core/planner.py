@@ -72,7 +72,7 @@ class Planner:
                 logger.info("Fetching Tautulli watch history...")
                 tautulli_service = TautulliService()
                 movie_watch_map = tautulli_service.get_movie_watch_map()
-                logger.info("Tautulli movie watch map", count=len(movie_watch_map))
+                logger.info(f"Tautulli movie watch map: {len(movie_watch_map)} movies")
                 
                 episode_watch_map = tautulli_service.get_episode_watch_map()
                 logger.info("Tautulli episode watch map", count=len(episode_watch_map))

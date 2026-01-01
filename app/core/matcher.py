@@ -221,17 +221,20 @@ class MediaMatcher:
                 sample_item = unified[0]
                 sample_torrent = qb_torrents[0]
                 primary_path = sample_item.get_primary_path()
-                logger.info("matching_debug_samples",
-                           sample_media_path=primary_path[:100] if primary_path else "N/A",
-                           sample_media_title=sample_item.title[:50] if sample_item.title else "N/A",
-                           sample_media_type=sample_item.type,
-                           sample_radarr_path=sample_item.radarr_path[:80] if sample_item.radarr_path else "N/A",
-                           sample_sonarr_path=sample_item.sonarr_path[:80] if sample_item.sonarr_path else "N/A",
-                           sample_torrent_name=sample_torrent.get("name", "")[:50] if sample_torrent.get("name") else "N/A",
-                           sample_torrent_content_path=sample_torrent.get("content_path", "")[:100] if sample_torrent.get("content_path") else "N/A",
-                           sample_torrent_save_path=sample_torrent.get("save_path", "")[:80] if sample_torrent.get("save_path") else "N/A",
-                           sample_torrent_files_count=len(sample_torrent.get("files", [])),
-                           sample_torrent_first_file=sample_torrent.get("files", [""])[0][:80] if sample_torrent.get("files") else "N/A")
+                media_path_str = primary_path[:100] if primary_path else "N/A"
+                media_title_str = sample_item.title[:50] if sample_item.title else "N/A"
+                radarr_path_str = sample_item.radarr_path[:80] if sample_item.radarr_path else "N/A"
+                sonarr_path_str = sample_item.sonarr_path[:80] if sample_item.sonarr_path else "N/A"
+                torrent_name_str = sample_torrent.get("name", "")[:50] if sample_torrent.get("name") else "N/A"
+                torrent_content_path_str = sample_torrent.get("content_path", "")[:100] if sample_torrent.get("content_path") else "N/A"
+                torrent_save_path_str = sample_torrent.get("save_path", "")[:80] if sample_torrent.get("save_path") else "N/A"
+                torrent_files_count = len(sample_torrent.get("files", []))
+                torrent_first_file_str = sample_torrent.get("files", [""])[0][:80] if sample_torrent.get("files") else "N/A"
+                logger.info(f"matching_debug_samples: media_path={media_path_str}, media_title={media_title_str}, "
+                          f"media_type={sample_item.type}, radarr_path={radarr_path_str}, sonarr_path={sonarr_path_str}, "
+                          f"torrent_name={torrent_name_str}, torrent_content_path={torrent_content_path_str}, "
+                          f"torrent_save_path={torrent_save_path_str}, torrent_files_count={torrent_files_count}, "
+                          f"torrent_first_file={torrent_first_file_str}")
                 
                 # Tester le matching pour le premier item avec TOUS les torrents
                 if primary_path:
@@ -249,16 +252,16 @@ class MediaMatcher:
                     
                     # Si aucun match, logger les 5 premiers torrents pour comparaison
                     if not test_hashes and len(qb_torrents) > 0:
-                        logger.warning("no_matches_for_first_item",
-                                     media_path=primary_path[:100],
-                                     sample_torrents=[
-                                         {
-                                             "name": t.get("name", "")[:60],
-                                             "content_path": t.get("content_path", "")[:80],
-                                             "save_path": t.get("save_path", "")[:60],
-                                         }
-                                         for t in qb_torrents[:5]
-                                     ])
+                        sample_torrents = [
+                            {
+                                "name": t.get("name", "")[:60],
+                                "content_path": t.get("content_path", "")[:80],
+                                "save_path": t.get("save_path", "")[:60],
+                            }
+                            for t in qb_torrents[:5]
+                        ]
+                        logger.warning(f"no_matches_for_first_item: media_path={primary_path[:100]}, "
+                                     f"sample_torrents={sample_torrents}")
             
             for idx, item in enumerate(unified):
                 if idx > 0 and idx % 200 == 0:
