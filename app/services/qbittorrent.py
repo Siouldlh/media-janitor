@@ -96,43 +96,65 @@ class QBittorrentService:
                                hash=torrent.hash[:8] if hasattr(torrent, "hash") else "N/A",
                                attrs=torrent_attrs[:20])
                 
-                # Méthode 1: Attribut direct content_path (peut ne pas exister dans toutes les versions)
+                # PRIORITÉ 1: Attribut direct content_path (si disponible dans cette version)
                 if hasattr(torrent, "content_path") and torrent.content_path:
-                    content_path = str(torrent.content_path).replace("\\", "/")
+                    content_path = str(torrent.content_path).replace("\\", "/").rstrip("/")
                     if idx < 3:
                         logger.debug("content_path_from_attr", path=content_path[:80])
-                # Méthode 2: Depuis save_path + name (méthode standard)
-                elif hasattr(torrent, "save_path") and torrent.save_path:
+                
+                # PRIORITÉ 2: Construire depuis save_path + name (MÉTHODE STANDARD - TOUJOURS UTILISER)
+                # C'est la méthode la plus fiable car save_path et name sont toujours présents
+                if not content_path and hasattr(torrent, "save_path") and torrent.save_path:
                     import os
-                    save_path = str(torrent.save_path)
+                    save_path = str(torrent.save_path).rstrip("/").rstrip("\\")
                     # Le nom du torrent peut être dans différents attributs
                     torrent_name = None
                     if hasattr(torrent, "name") and torrent.name:
-                        torrent_name = str(torrent.name)
+                        torrent_name = str(torrent.name).strip()
                     elif hasattr(torrent, "title") and torrent.title:
-                        torrent_name = str(torrent.title)
+                        torrent_name = str(torrent.title).strip()
                     
                     if torrent_name:
+                        # Joindre save_path et name pour obtenir le chemin complet
                         content_path = os.path.join(save_path, torrent_name).replace("\\", "/")
+                        # Nettoyer les doubles slashes et trailing slashes
+                        content_path = content_path.replace("//", "/").rstrip("/")
                         if idx < 3:
                             logger.debug("content_path_from_save_path",
                                        save_path=save_path[:60],
                                        name=torrent_name[:50],
                                        content_path=content_path[:80])
                     else:
-                        # Si pas de nom, utiliser juste save_path
-                        content_path = save_path.replace("\\", "/")
+                        # Si pas de nom, utiliser juste save_path (cas rare)
+                        content_path = save_path.replace("\\", "/").rstrip("/")
                         if idx < 3:
                             logger.debug("content_path_from_save_path_only", path=content_path[:80])
-                # Méthode 3: Depuis le premier fichier si disponible
-                elif torrent_files:
+                
+                # PRIORITÉ 3: Depuis le premier fichier si disponible (fallback)
+                if not content_path and torrent_files:
                     # Utiliser le répertoire du premier fichier comme content_path
                     first_file = torrent_files[0]
                     import os
-                    content_path = os.path.dirname(first_file).replace("\\", "/")
+                    # Le premier fichier peut être un chemin relatif ou absolu
+                    if os.path.isabs(first_file):
+                        content_path = os.path.dirname(first_file).replace("\\", "/")
+                    else:
+                        # Si relatif, combiner avec save_path si disponible
+                        if hasattr(torrent, "save_path") and torrent.save_path:
+                            save_path = str(torrent.save_path).rstrip("/").rstrip("\\")
+                            torrent_name = str(torrent.name).strip() if hasattr(torrent, "name") and torrent.name else ""
+                            if torrent_name:
+                                base_path = os.path.join(save_path, torrent_name).replace("\\", "/")
+                            else:
+                                base_path = save_path.replace("\\", "/")
+                            content_path = os.path.join(base_path, os.path.dirname(first_file)).replace("\\", "/")
+                        else:
+                            content_path = os.path.dirname(first_file).replace("\\", "/")
+                    
                     if not content_path:
                         # Si pas de répertoire, utiliser le nom du fichier
                         content_path = first_file
+                    content_path = content_path.replace("//", "/").rstrip("/")
                     if idx < 3:
                         logger.debug("content_path_from_files", path=content_path[:80])
                 
