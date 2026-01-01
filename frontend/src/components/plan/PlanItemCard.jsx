@@ -68,7 +68,7 @@ function PlanItemCard({ item, onToggle, onProtect }) {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
             <div>
               <p className="text-gray-500">Dernier visionnage</p>
               <p className="font-medium text-gray-900">{formatDate(item.last_viewed_at)}</p>
@@ -83,10 +83,39 @@ function PlanItemCard({ item, onToggle, onProtect }) {
               <p className="font-medium text-gray-900">{formatSize(item.size_bytes)}</p>
             </div>
             <div>
+              <p className="text-gray-500">Torrents</p>
+              <p className="font-medium text-gray-900">
+                {item.qb_hashes && item.qb_hashes.length > 0 ? (
+                  <span className="text-green-600">{item.qb_hashes.length} trouvé{item.qb_hashes.length > 1 ? 's' : ''}</span>
+                ) : (
+                  <span className="text-gray-400">Aucun</span>
+                )}
+              </p>
+            </div>
+            <div>
               <p className="text-gray-500">Règle</p>
               <p className="font-medium text-gray-900">{item.rule || '-'}</p>
             </div>
           </div>
+          
+          {/* Afficher les détails des torrents si disponibles */}
+          {item.qb_hashes && item.qb_hashes.length > 0 && (
+            <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
+              <p className="text-blue-800 font-medium mb-1">
+                Torrents associés ({item.qb_hashes.length}):
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {item.qb_hashes.slice(0, 5).map((hash, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 rounded font-mono text-xs">
+                    {hash.substring(0, 8)}...
+                  </span>
+                ))}
+                {item.qb_hashes.length > 5 && (
+                  <span className="px-2 py-1 text-blue-600">+{item.qb_hashes.length - 5} autres</span>
+                )}
+              </div>
+            </div>
+          )}
 
           {item.protected_reason && (
             <div className="mt-3 p-2 bg-yellow-50 rounded text-sm text-yellow-800">

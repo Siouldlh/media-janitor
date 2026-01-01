@@ -153,7 +153,8 @@ function Plans() {
     if (viewMode === 'movies') {
       items = items.filter(item => item.media_type === 'movie')
     } else if (viewMode === 'series') {
-      items = items.filter(item => item.media_type === 'series')
+      // Inclure les séries ET les épisodes individuels
+      items = items.filter(item => item.media_type === 'series' || item.media_type === 'episode')
     }
 
     return items
@@ -241,7 +242,7 @@ function Plans() {
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Séries ({plan.items?.filter(item => item.media_type === 'series').length || 0})
+            Séries ({plan.items?.filter(item => item.media_type === 'series' || item.media_type === 'episode').length || 0})
           </button>
         </div>
 
