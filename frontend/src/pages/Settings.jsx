@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { getConfig, updateConfig } from '../api'
-import { toast } from '../lib/toast'
+import { toast } from '../lib/toast.jsx'
 
 function Settings() {
   const [config, setConfig] = useState(null)
