@@ -307,11 +307,36 @@ class Planner:
         candidates = []
         max_items = config.app.max_items_per_scan if config.app else None
         
+        # Séparer les items par type pour traitement spécial
+        series_items = [item for item in unified_items if item.type == "series"]
+        episode_items_list = [item for item in unified_items if item.type == "episode"]
+        
+        # Pour les séries, on ne les inclut que si elles n'ont PAS d'épisodes candidats
+        # (car on préfère supprimer les épisodes individuellement)
+        series_with_episodes = set()
+        for episode in episode_items_list:
+            # Trouver la série parente de cet épisode
+            episode_tvdb_id = episode.tvdb_id
+            if episode_tvdb_id:
+                for series in series_items:
+                    if series.tvdb_id == episode_tvdb_id:
+                        series_with_episodes.add(series.tvdb_id)
+                        break
+        
+        logger.info(f"Found {len(episode_items_list)} episodes, {len(series_items)} series, {len(series_with_episodes)} series with episodes")
+        
         for item in unified_items:
             # Limite max_items_per_scan si configuré
             if max_items and len(candidates) >= max_items:
                 logger.info(f"Reached max_items_per_scan limit: {max_items}")
                 break
+            
+            # Pour les séries, exclure celles qui ont des épisodes candidats
+            if item.type == "series" and item.tvdb_id and item.tvdb_id in series_with_episodes:
+                logger.debug("skipping_series_with_episodes", 
+                           title=item.title,
+                           tvdb_id=item.tvdb_id)
+                continue
                 
             # Évaluer règle
             is_candidate, rule = self.rules_engine.evaluate(item)
@@ -326,7 +351,7 @@ class Planner:
                 continue
 
             candidates.append((item, rule))
-        logger.info(f"Found {len(candidates)} candidates for deletion")
+        logger.info(f"Found {len(candidates)} candidates for deletion (excluding series with episodes)")
         self._emit_progress("rules_evaluated", 80, f"Évaluation terminée: {len(candidates)} candidats")
 
         # Créer Plan en DB
