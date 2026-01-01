@@ -79,9 +79,7 @@ class QBittorrentService:
                                 file_name = file_name.replace("\\", "/")
                                 torrent_files.append(file_name)
                 except Exception as e:
-                    logger.debug("torrent_files_error", 
-                               hash=torrent.hash[:8], 
-                               error=str(e))
+                    logger.debug(f"Error fetching torrent files for {torrent.hash[:8]}: {str(e)}")
                 
                 # Essayer d'obtenir content_path depuis différentes sources
                 content_path = None
@@ -113,16 +111,12 @@ class QBittorrentService:
                         # Nettoyer les doubles slashes et trailing slashes
                         content_path = content_path.replace("//", "/").rstrip("/")
                         if idx < 3:
-                            logger.debug("content_path_from_save_path",
-                                       save_path=save_path[:60],
-                                       name=torrent_name[:50],
-                                       content_path=content_path[:80],
-                                       has_content_path_attr=hasattr(torrent, "content_path"))
+                            logger.debug(f"content_path from save_path: save_path={save_path[:60]}, name={torrent_name[:50]}, content_path={content_path[:80]}, has_attr={hasattr(torrent, 'content_path')}")
                     else:
                         # Si pas de nom, utiliser juste save_path (cas rare)
                         content_path = save_path.replace("\\", "/").rstrip("/")
                         if idx < 3:
-                            logger.debug("content_path_from_save_path_only", path=content_path[:80])
+                            logger.debug(f"content_path from save_path only: {content_path[:80]}")
                 
                 # FALLBACK: Depuis le premier fichier si save_path n'est pas disponible
                 if not content_path and torrent_files:
@@ -150,7 +144,7 @@ class QBittorrentService:
                         content_path = first_file
                     content_path = content_path.replace("//", "/").rstrip("/")
                     if idx < 3:
-                        logger.debug("content_path_from_files", path=content_path[:80])
+                        logger.debug(f"content_path from files: {content_path[:80]}")
                 
                 result.append({
                     "hash": torrent.hash,
@@ -165,12 +159,10 @@ class QBittorrentService:
                 })
                 
                 if idx < 3:
-                    logger.debug("sample_torrent",
-                               index=idx+1,
-                               name=str(torrent.name)[:50] if hasattr(torrent, "name") else "N/A",
-                               save_path=str(torrent.save_path)[:50] if hasattr(torrent, "save_path") else "N/A",
-                               content_path=content_path[:50] if content_path else "N/A",
-                               files_count=len(torrent_files))
+                    name = str(torrent.name)[:50] if hasattr(torrent, "name") else "N/A"
+                    save_path_str = str(torrent.save_path)[:50] if hasattr(torrent, "save_path") else "N/A"
+                    content_path_str = content_path[:50] if content_path else "N/A"
+                    logger.debug(f"Sample torrent {idx+1}: name={name}, save_path={save_path_str}, content_path={content_path_str}, files_count={len(torrent_files)}")
 
             total_files = sum(len(t.get("files", [])) for t in result)
             logger.info(f"Retrieved {len(result)} torrents with {total_files} total files")
