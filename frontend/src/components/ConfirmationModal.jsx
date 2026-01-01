@@ -1,78 +1,72 @@
-import React, { useState, useEffect } from 'react'
-import './ConfirmationModal.css'
+import React, { useState } from 'react'
 
-function ConfirmationModal({ itemCount, totalSize, onConfirm, onCancel, requireConfirmPhrase }) {
+const formatSize = (bytes) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+function ConfirmationModal({ onConfirm, onCancel, requirePhrase, selectedCount, itemCount, totalSize }) {
   const [confirmPhrase, setConfirmPhrase] = useState('')
-  const [canConfirm, setCanConfirm] = useState(false)
 
-  useEffect(() => {
-    if (requireConfirmPhrase) {
-      setCanConfirm(confirmPhrase === requireConfirmPhrase)
-    } else {
-      setCanConfirm(true)
+  const handleConfirm = () => {
+    if (requirePhrase && confirmPhrase !== requirePhrase) {
+      alert('Phrase de confirmation incorrecte')
+      return
     }
-  }, [confirmPhrase, requireConfirmPhrase])
-
-  const formatSize = (bytes) => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+    onConfirm(confirmPhrase)
   }
 
   return (
-    <div className="modal">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h2>Confirmation de suppression</h2>
-          <button className="close-btn" onClick={onCancel}>×</button>
-        </div>
-        <div className="modal-body">
-          <p><strong>Attention:</strong> Cette action est irréversible.</p>
-          <div className="confirmation-stats">
-            <div className="stat-item">
-              <div className="stat-value">{itemCount}</div>
-              <div className="stat-label">Items à supprimer</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-value">{formatSize(totalSize)}</div>
-              <div className="stat-label">Taille totale</div>
-            </div>
-          </div>
-          <div className="confirmation-steps">
-            <h3>Ordre d'exécution:</h3>
-            <ol>
-              <li>Suppression des torrents qBittorrent (cross-seed)</li>
-              <li>Suppression via Radarr/Sonarr (fichiers + DB)</li>
-              <li>Rafraîchissement Plex (optionnel)</li>
-            </ol>
-          </div>
-        </div>
-        {requireConfirmPhrase && (
-          <div className="confirm-phrase-section">
-            <label>
-              Tapez <strong>{requireConfirmPhrase}</strong> pour confirmer :
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">
+          Confirmer la suppression
+        </h2>
+        <p className="text-gray-700 mb-4">
+          Vous êtes sur le point de supprimer <strong>{itemCount || selectedCount}</strong> item{(itemCount || selectedCount) > 1 ? 's' : ''}.
+          Cette action est irréversible.
+        </p>
+        {totalSize && (
+          <p className="text-gray-600 mb-4 text-sm">
+            Taille totale : {formatSize(totalSize)}
+          </p>
+        )}
+        {requirePhrase && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tapez "{requirePhrase}" pour confirmer :
             </label>
             <input
               type="text"
               value={confirmPhrase}
               onChange={(e) => setConfirmPhrase(e.target.value)}
-              placeholder={requireConfirmPhrase}
-              className="confirm-phrase-input"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              placeholder={requirePhrase}
             />
           </div>
         )}
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onCancel}>
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          >
             Annuler
           </button>
           <button
-            className="btn btn-danger"
-            onClick={() => onConfirm(confirmPhrase)}
-            disabled={!canConfirm}
+            onClick={handleConfirm}
+            disabled={requirePhrase && confirmPhrase !== requirePhrase}
+            className={`
+              px-4 py-2 text-white rounded-lg transition-colors
+              ${requirePhrase && confirmPhrase !== requirePhrase
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-red-600 hover:bg-red-700'
+              }
+            `}
           >
-            Confirmer et appliquer
+            Confirmer
           </button>
         </div>
       </div>
@@ -81,4 +75,3 @@ function ConfirmationModal({ itemCount, totalSize, onConfirm, onCancel, requireC
 }
 
 export default ConfirmationModal
-

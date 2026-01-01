@@ -70,7 +70,10 @@ export async function getDiagnostics() {
 
 export async function getConfig() {
   const response = await fetch(`${API_BASE}/config`);
-  if (!response.ok) throw new Error('Failed to fetch config');
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to fetch config' }));
+    throw new Error(error.detail || 'Failed to fetch config');
+  }
   return response.json();
 }
 
@@ -81,7 +84,7 @@ export async function updateConfig(configData) {
     body: JSON.stringify(configData),
   });
   if (!response.ok) {
-    const error = await response.json();
+    const error = await response.json().catch(() => ({ detail: 'Failed to update config' }));
     throw new Error(error.detail || 'Failed to update config');
   }
   return response.json();
