@@ -42,8 +42,6 @@ class QBittorrentService:
 
     def get_torrents(self) -> List[Dict[str, Any]]:
         """Récupère tous les torrents depuis qBittorrent."""
-        import logging
-        logger = logging.getLogger(__name__)
         
         try:
             client = self._get_client()
@@ -175,7 +173,7 @@ class QBittorrentService:
                                files_count=len(torrent_files))
 
             total_files = sum(len(t.get("files", [])) for t in result)
-            logger.info("torrents_retrieved", count=len(result), total_files=total_files)
+            logger.info(f"Retrieved {len(result)} torrents with {total_files} total files")
             return result
         except Exception as e:
             logger.exception("error_fetching_torrents", exc_info=True)
