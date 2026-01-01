@@ -61,33 +61,65 @@ class TorrentMatcher:
         torrent: Dict[str, Any]
     ) -> Tuple[bool, Optional[str]]:
         """Stratégie 1: Matching exact par chemin."""
+        if not media_path:
+            return False, None
+            
         media_path_norm = self.normalize_path(media_path)
         
-        # Vérifier content_path
+        # Vérifier content_path (chemin construit depuis save_path + name)
         content_path = torrent.get("content_path")
         if content_path:
             content_path_norm = self.normalize_path(content_path)
+            # Match exact
             if media_path_norm == content_path_norm:
+                if self.debug:
+                    logger.debug("exact_match_content_path",
+                               media=media_path_norm[:80],
+                               torrent=content_path_norm[:80])
                 return True, "exact_content_path"
-            # Vérifier relation parent/enfant
+            # Vérifier relation parent/enfant (un chemin contient l'autre)
             if media_path_norm.startswith(content_path_norm + "/") or \
                content_path_norm.startswith(media_path_norm + "/"):
+                if self.debug:
+                    logger.debug("parent_child_match_content_path",
+                               media=media_path_norm[:80],
+                               torrent=content_path_norm[:80])
                 return True, "path_parent_child"
         
-        # Vérifier save_path
+        # Vérifier save_path + name (reconstruction si content_path manquant)
         save_path = torrent.get("save_path", "")
+        torrent_name = torrent.get("name", "")
+        if save_path and torrent_name:
+            # Construire le chemin complet
+            full_path = os.path.join(save_path, torrent_name).replace("\\", "/")
+            full_path_norm = self.normalize_path(full_path)
+            # Match exact
+            if media_path_norm == full_path_norm:
+                if self.debug:
+                    logger.debug("exact_match_save_path",
+                               media=media_path_norm[:80],
+                               torrent=full_path_norm[:80])
+                return True, "exact_save_path"
+            # Relation parent/enfant
+            if media_path_norm.startswith(full_path_norm + "/") or \
+               full_path_norm.startswith(media_path_norm + "/"):
+                if self.debug:
+                    logger.debug("parent_child_match_save_path",
+                               media=media_path_norm[:80],
+                               torrent=full_path_norm[:80])
+                return True, "save_path_parent_child"
+        
+        # Vérifier aussi save_path seul (pour les cas où le torrent est directement dans save_path)
         if save_path:
             save_path_norm = self.normalize_path(save_path)
-            torrent_name = torrent.get("name", "")
-            if torrent_name:
-                # Construire le chemin complet
-                full_path = os.path.join(save_path, torrent_name).replace("\\", "/")
-                full_path_norm = self.normalize_path(full_path)
-                if media_path_norm == full_path_norm:
-                    return True, "exact_save_path"
-                if media_path_norm.startswith(full_path_norm + "/") or \
-                   full_path_norm.startswith(media_path_norm + "/"):
-                    return True, "save_path_parent_child"
+            if media_path_norm == save_path_norm or \
+               media_path_norm.startswith(save_path_norm + "/") or \
+               save_path_norm.startswith(media_path_norm + "/"):
+                if self.debug:
+                    logger.debug("match_save_path_only",
+                               media=media_path_norm[:80],
+                               torrent=save_path_norm[:80])
+                return True, "save_path_only"
         
         return False, None
     
