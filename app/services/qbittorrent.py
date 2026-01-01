@@ -168,7 +168,7 @@ class QBittorrentService:
             logger.info(f"Retrieved {len(result)} torrents with {total_files} total files")
             return result
         except Exception as e:
-            logger.exception("error_fetching_torrents", exc_info=True)
+            logger.exception("Error fetching torrents from qBittorrent")
             raise
 
     def find_torrents_for_path(self, media_path: str, all_torrents: Optional[List[Dict[str, Any]]] = None, media_title: Optional[str] = None) -> List[str]:
